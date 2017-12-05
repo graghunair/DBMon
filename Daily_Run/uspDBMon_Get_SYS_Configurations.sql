@@ -50,7 +50,7 @@ AS
 /*
 	Author	:	Raghu Gopalakrishnan
 	Date	:	28th November 2017
-	Purpose	:	This Stored Procedure is used by the DBMon took to capture server configuration changes
+	Purpose	:	This Stored Procedure is used by the DBMon tool to capture server configuration changes
 				so that we have historical data to review changes over a period of time.
 	Version	:	1.0
 
