@@ -9,7 +9,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 IF EXISTS (SELECT 1 FROM [sys].[tables] WHERE [name] = 'tblDBMon_SYS_Configurations' AND schema_id = schema_id('dbo'))
 BEGIN
-	PRINT 'The procedure: [dbo].[uspDBMon_Get_SYS_Configurations] already exists. Dropping it first.'
+	PRINT 'The table: [dbo].[tblDBMon_SYS_Configurations] already exists. Dropping it first.'
 	DROP TABLE [dbo].[tblDBMon_SYS_Configurations]
 END
 
