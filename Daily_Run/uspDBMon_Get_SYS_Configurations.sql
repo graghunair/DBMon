@@ -1,10 +1,9 @@
 SET NOCOUNT ON
 
---Drop the procedure if it already exists
 USE [dba_local]
 GO
 
---Create the use table to host data
+--Create the user table to host data
 SET QUOTED_IDENTIFIER ON
 GO
 IF EXISTS (SELECT 1 FROM [sys].[tables] WHERE [name] = 'tblDBMon_SYS_Configurations' AND schema_id = schema_id('dbo'))
@@ -23,6 +22,7 @@ GO
 CREATE CLUSTERED INDEX IDX_tblDBMon_SYS_Configurations_Date_Captured ON [dbo].[tblDBMon_SYS_Configurations](Date_Captured)
 GO
 
+--Capture data for first time run
 INSERT INTO [dbo].[tblDBMon_SYS_Configurations](Config_Name, [Value], Value_in_Use)
 SELECT	[name] Config_Name, 
 		CAST([value] AS VARCHAR(1000)) [Value], 
@@ -30,6 +30,7 @@ SELECT	[name] Config_Name,
 FROM	sys.configurations
 GO
 
+--Drop procedure if it already exists
 IF EXISTS (SELECT 1 FROM [sys].[procedures] WHERE [name] = 'uspDBMon_Get_SYS_Configurations' AND schema_id = SCHEMA_ID('dbo'))
 	BEGIN
 		PRINT 'The procedure: [dbo].[uspDBMon_Get_SYS_Configurations] already exists. Dropping it first.'
