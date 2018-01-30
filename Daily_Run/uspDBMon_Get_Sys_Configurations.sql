@@ -6,24 +6,24 @@ GO
 --Create the user table to host data
 SET QUOTED_IDENTIFIER ON
 GO
-IF EXISTS (SELECT 1 FROM [sys].[tables] WHERE [name] = 'tblDBMon_SYS_Configurations' AND schema_id = schema_id('dbo'))
+IF EXISTS (SELECT 1 FROM [sys].[tables] WHERE [name] = 'tblDBMon_Sys_Configurations' AND schema_id = schema_id('dbo'))
 BEGIN
-	PRINT 'The table: [dbo].[tblDBMon_SYS_Configurations] already exists. Dropping it first.'
-	DROP TABLE [dbo].[tblDBMon_SYS_Configurations]
+	PRINT 'The table: [dbo].[tblDBMon_Sys_Configurations] already exists. Dropping it first.'
+	DROP TABLE [dbo].[tblDBMon_Sys_Configurations]
 END
 
-CREATE TABLE [dbo].[tblDBMon_SYS_Configurations](
-	[Date_Captured] [datetime] NOT NULL CONSTRAINT [DF_tblDBMon_SYS_Configurations_Date_Captured] DEFAULT GETDATE(),
+CREATE TABLE [dbo].[tblDBMon_Sys_Configurations](
+	[Date_Captured] [datetime] NOT NULL CONSTRAINT [DF_tblDBMon_Sys_Configurations_Date_Captured] DEFAULT GETDATE(),
 	[Config_Name] [nvarchar](35) NOT NULL,
 	[Value] [varchar](1000) NULL,
 	[Value_in_Use] [varchar](1000) NULL
 ) 
 GO
-CREATE CLUSTERED INDEX IDX_tblDBMon_SYS_Configurations_Date_Captured ON [dbo].[tblDBMon_SYS_Configurations](Date_Captured)
+CREATE CLUSTERED INDEX IDX_tblDBMon_Sys_Configurations_Date_Captured ON [dbo].[tblDBMon_Sys_Configurations](Date_Captured)
 GO
 
 --Capture data for first time run
-INSERT INTO [dbo].[tblDBMon_SYS_Configurations](Config_Name, [Value], Value_in_Use)
+INSERT INTO [dbo].[tblDBMon_Sys_Configurations](Config_Name, [Value], Value_in_Use)
 SELECT	[name] Config_Name, 
 		CAST([value] AS VARCHAR(1000)) [Value], 
 		CAST(value_in_use  AS VARCHAR(1000)) Value_in_Use
@@ -59,7 +59,7 @@ AS
 	This script is provided "AS IS" with no warranties, and confers no rights.
 
 				EXEC [dbo].[uspDBMon_Get_SYS_Configurations]
-				SELECT * FROM [dbo].[tblDBMon_SYS_Configurations]
+				SELECT * FROM [dbo].[tblDBMon_Sys_Configurations]
 
 	Modification History
 	----------------------
@@ -75,15 +75,15 @@ AS
 	WHILE (@varConfig_Name IS NOT NULL)
 		BEGIN
 			SELECT  @varDate_Captured = MAX(Date_Captured)
-			FROM	[dbo].[tblDBMon_SYS_Configurations]
+			FROM	[dbo].[tblDBMon_Sys_Configurations]
 			WHERE	Config_Name = @varConfig_Name
 
-			INSERT INTO		[dbo].[tblDBMon_SYS_Configurations](Config_Name, [Value], Value_in_Use)
+			INSERT INTO		[dbo].[tblDBMon_Sys_Configurations](Config_Name, [Value], Value_in_Use)
 			SELECT			A.[name],
 							CAST(A.[value] AS VARCHAR(1000)),
 							CAST(A.value_in_use AS VARCHAR(1000))
 			FROM			[sys].[configurations] A
-			LEFT OUTER JOIN [dbo].[tblDBMon_SYS_Configurations] B
+			LEFT OUTER JOIN [dbo].[tblDBMon_Sys_Configurations] B
 			ON				A.[name] = B.Config_Name
 			WHERE			A.[name] = @varConfig_Name
 			AND				B.Date_Captured = @varDate_Captured
