@@ -33,8 +33,8 @@ GO
 
 -- The table where the information will be stored historically
 CREATE TABLE [dbo].[tblDBMon_Track_Logins](
-    [Login_Name]    NVARCHAR(225) NOT NULL,
-    [Host_Name]        NVARCHAR(225) NULL,
+    [Login_Name]    NVARCHAR(128) NOT NULL,
+    [Host_Name]        NVARCHAR(128) NULL,
     [Login_Time]    DATETIME)
 GO
 ALTER TABLE [dbo].[tblDBMon_Track_Logins] ADD CONSTRAINT [UQ_tblDBMon_Track_Logins] UNIQUE CLUSTERED ([Login_Name], [Host_Name])
