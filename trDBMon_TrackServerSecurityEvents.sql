@@ -1,3 +1,14 @@
+/*
+
+	Author	:	Raghu Gopalakrishnan
+	Date	:	10 February 2020
+	Purpose	:	This is a script to enable a server level trigger to track security events on the server.
+				Information is updated to the table: [master].[dbo].[tblDBMon_DBA_Audit_Log]
+	Version :	1.0
+	License:	This script is provided "AS IS" with no warranties, and confers no rights.
+
+*/
+
 SET NOCOUNT ON
 
 USE [master]

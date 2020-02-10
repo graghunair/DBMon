@@ -1,3 +1,11 @@
+/*
+	Author	:	Raghu Gopalakrishnan
+	Date	:	10 February 2020
+	Purpose	:	This is a script to enable SQL Auditing
+	Version :	1.0
+	License:	This script is provided "AS IS" with no warranties, and confers no rights.
+*/
+
 
 SET NOCOUNT ON
 
