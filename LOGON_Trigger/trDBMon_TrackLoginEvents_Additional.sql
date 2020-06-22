@@ -35,9 +35,9 @@ GO
 CREATE TABLE [dbo].[tblDBMon_Track_Logins](
     [Login_Name]    NVARCHAR(128) NOT NULL,
     [Host_Name]        NVARCHAR(128) NULL,
-    [First_Login_Time]    DATETIME,
-	[Last_Login_Time]    DATETIME,
-	[Connection_Attempt_Count] INT NULL)
+    [First_Login_Time]    DATETIME NOT NULL,
+	[Last_Login_Time]    DATETIME NOT NULL,
+	[Connection_Attempt_Count] BIGINT NOT NULL)
 GO
 ALTER TABLE [dbo].[tblDBMon_Track_Logins] ADD CONSTRAINT [UQ_tblDBMon_Track_Logins] UNIQUE CLUSTERED ([Login_Name], [Host_Name])
 GO
