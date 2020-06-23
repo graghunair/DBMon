@@ -83,3 +83,12 @@ ENABLE TRIGGER [trDBMon_TrackLoginEvents] ON ALL SERVER
 GO
 
 SELECT * FROM [dbo].[tblDBMon_Track_Logins]
+
+/*
+USE [master]
+GO
+ALTER DATABASE [master] MODIFY FILE ( NAME = N'master', SIZE = 250MB , FILEGROWTH = 64MB )
+GO
+ALTER DATABASE [master] MODIFY FILE ( NAME = N'mastlog', SIZE = 250MB , FILEGROWTH = 64MB )
+GO
+*/
