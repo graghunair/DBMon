@@ -52,10 +52,10 @@ AS
 		License:
 					This script is provided "AS IS" with no warranties, and confers no rights.
 					EXEC [dbo].[uspDBMon_rptGetAOAGLatency] 
-									@Database_Name = 'AJS_SBS',
+									@Database_Name = '<dbname>',
 									@Mail = 1,
 									@Mail_Subject = '[SBS]: AOAG latency between replicas',
-									@Mail_Recipients = 'gohara@bein.net',
+									@Mail_Recipients = 'email@domain.com',
 									@Delay_Minutes = 0
 
 		Modification History
