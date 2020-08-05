@@ -2,7 +2,7 @@
 	The below values need to be modified:
 		1. @Database_Name SYSNAME = '<dbname>',
 		2. @Mail_Recipients VARCHAR(MAX) = '<default-email-address>'
-		3. @profile_name = N'SBS Mail'
+		3. @profile_name = N'<profile_name>'
 */
 
 USE [dba_local]
@@ -54,7 +54,7 @@ AS
 					EXEC [dbo].[uspDBMon_rptGetAOAGLatency] 
 									@Database_Name = '<dbname>',
 									@Mail = 1,
-									@Mail_Subject = '[SBS]: AOAG latency between replicas',
+									@Mail_Subject = 'AOAG Latency Between Replicas',
 									@Mail_Recipients = 'email@domain.com',
 									@Delay_Minutes = 0
 
