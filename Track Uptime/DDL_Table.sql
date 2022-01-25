@@ -9,13 +9,13 @@ GO
 
 CREATE TABLE [dbo].[tblDBMon_Track_Instance_Restarts](
 	[ID]			BIGINT IDENTITY(1,1),
-	[Date_Captured] DATETIME,
+	[SQLServer_Start_Time] DATETIME,
 	[Last_Updated]	DATETIME,
-	[SQLServer_Start_Time] DATETIME)
+	[Current]		BIT DEFAULT 1)
 
-INSERT INTO [dbo].[tblDBMon_Track_Instance_Restarts] ([Date_Captured], [Last_Updated], [SQLServer_Start_Time])
-SELECT	[sqlserver_start_time], GETDATE(), [sqlserver_start_time] FROM [sys].[dm_os_sys_info] 
+INSERT INTO [dbo].[tblDBMon_Track_Instance_Restarts] ([Last_Updated], [SQLServer_Start_Time], [Current])
+SELECT	GETDATE(), [sqlserver_start_time], 1 FROM [sys].[dm_os_sys_info] 
 
-SELECT	* 
+SELECT	*, DATEDIFF(mi, [SQLServer_Start_Time], [Last_Updated]) AS UpTime_In_Minutes
 FROM	[dbo].[tblDBMon_Track_Instance_Restarts]
 GO
