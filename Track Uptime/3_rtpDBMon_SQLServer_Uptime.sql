@@ -37,12 +37,12 @@ DECLARE @tblTemp TABLE(
 
 DECLARE @tblOutput TABLE(
 	[ID] INT,
-	[SQLServer_Start_Time]			DATETIME,
-	[Last_Recorded_Up_Timestamp]	DATETIME,
-	[SQLServer_Host]				NVARCHAR(128),
-	[SQLServer_Instance]			NVARCHAR(128),
-	[Downtime_Seconds]				INT,
-	[Downtime]						VARCHAR(8))
+	[SQLServer_Start_Time]				DATETIME,
+	[Last_Recorded_Online_Timestamp]	DATETIME,
+	[SQLServer_Host]					NVARCHAR(128),
+	[SQLServer_Instance]				NVARCHAR(128),
+	[Downtime_Seconds]					INT,
+	[Downtime]							VARCHAR(8))
 
 SELECT	@varMax_ID = MAX(ID), 
 		@varMin_ID = MIN(ID) 
@@ -98,8 +98,8 @@ WHERE	[Current] = 1
 
 SELECT	[ID], 
 		[SQLServer_Start_Time], 
-		[Last_Recorded_Up_Timestamp], 
-		DATEDIFF(mi, [SQLServer_Start_Time], [Last_Recorded_Up_Timestamp]) AS [Up_Duration_Minutes],
+		[Last_Recorded_Online_Timestamp], 
+		DATEDIFF(mi, [SQLServer_Start_Time], [Last_Recorded_Online_Timestamp]) AS [Online_Duration_Minutes],
 		[SQLServer_Host], 
 		[SQLServer_Instance],
 		[Downtime_Seconds], 
