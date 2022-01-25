@@ -13,7 +13,7 @@ AS
 SET NOCOUNT ON
 /*
 	Date		:		Jan 25th, 2022
-	Purpose		:		Track SQL Server instance restarts and record it in the table:
+	Purpose		:		Track SQL Server instance restarts and record it in the table:[dbo].[tblDBMon_Track_Instance_Restart]
 	Version		:		1.0
 	Execute		:
 						EXEC [dbo].[uspDBMon_Track_SQLServer_Instance_Restart]
