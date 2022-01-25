@@ -13,6 +13,9 @@ CREATE TABLE [dbo].[tblDBMon_Track_Instance_Restarts](
 	[Last_Updated]	DATETIME,
 	[Current]		BIT DEFAULT 1)
 
+CREATE CLUSTERED INDEX IDX_tblDBMon_Track_Instance_Restarts ON [dbo].[tblDBMon_Track_Instance_Restarts]([ID])
+GO
+
 INSERT INTO [dbo].[tblDBMon_Track_Instance_Restarts] ([Last_Updated], [SQLServer_Start_Time], [Current])
 SELECT	GETDATE(), [sqlserver_start_time], 1 FROM [sys].[dm_os_sys_info] 
 
