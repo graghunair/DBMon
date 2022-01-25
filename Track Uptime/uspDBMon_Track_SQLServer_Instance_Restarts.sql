@@ -29,7 +29,7 @@ DECLARE @varOld_SQLServer_Start_Time DATETIME,
 		@varNew_SQLServer_Start_Time DATETIME 
 
 --Get the last time SQL Server instance restart was recorded
-SELECT	@varOld_SQLServer_Start_Time = [sqlserver_start_time]
+SELECT	@varOld_SQLServer_Start_Time = [SQLServer_Start_Time]
 FROM	[dbo].[tblDBMon_Track_Instance_Restart]
 WHERE	[Current] = 1
 
@@ -53,8 +53,8 @@ ELSE
 		SET		[Current] = 0
 		WHERE	[Current] = 1
 
-		INSERT INTO [dbo].[tblDBMon_Track_Instance_Restart] ([Last_Updated], [SQLServer_Start_Time], [Host])
-		SELECT	GETDATE(), [sqlserver_start_time], CAST(SERVERPROPERTY('ComputerNamePhysicalNetBIOS') AS NVARCHAR(128))
+		INSERT INTO [dbo].[tblDBMon_Track_Instance_Restart] ([Last_Updated], [SQLServer_Start_Time])
+		SELECT	GETDATE(), [sqlserver_start_time]
 		FROM	[sys].[dm_os_sys_info]
 	END
 GO
