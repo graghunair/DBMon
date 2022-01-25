@@ -14,7 +14,8 @@ CREATE TABLE [dbo].[tblDBMon_Track_Instance_Restart](
 	[ID]					INT IDENTITY(1,1),
 	[SQLServer_Start_Time]	DATETIME,
 	[Last_Updated]			DATETIME,
-	[Host]					NVARCHAR(128),
+	[SQLServer_Host]		NVARCHAR(128),
+	[SQLServer_Instance]	NVARCHAR(128),
 	[Current]				BIT)
 GO
 
@@ -29,9 +30,21 @@ ADD CONSTRAINT [DF_tblDBMon_Track_Instance_Restart_Currect]
 DEFAULT 1 FOR [Current]
 GO
 
+--Add the default constraint to auto-populate Hostname
+ALTER TABLE [dbo].[tblDBMon_Track_Instance_Restart] 
+ADD CONSTRAINT [DF_tblDBMon_Track_Instance_Restart_SQLServer_Host]
+DEFAULT CAST(SERVERPROPERTY('ComputerNamePhysicalNetBIOS') AS NVARCHAR(128)) FOR [SQLServer_Host]
+GO
+
+--Add the default constraint to auto-populate SQL Server Instance Name
+ALTER TABLE [dbo].[tblDBMon_Track_Instance_Restart] 
+ADD CONSTRAINT [DF_tblDBMon_Track_Instance_Restart_SQLServer_Instance]
+DEFAULT CAST(SERVERPROPERTY('ServerName') AS NVARCHAR(128)) FOR [SQLServer_Instance]
+GO
+
 --Insert the first record into the table
-INSERT INTO [dbo].[tblDBMon_Track_Instance_Restart] ([Last_Updated], [SQLServer_Start_Time], [Host], [Current])
-SELECT	GETDATE(), [sqlserver_start_time], CAST(SERVERPROPERTY('ComputerNamePhysicalNetBIOS') AS NVARCHAR(128)), 1 
+INSERT INTO [dbo].[tblDBMon_Track_Instance_Restart] ([Last_Updated], [SQLServer_Start_Time])
+SELECT	GETDATE(), [sqlserver_start_time]
 FROM	[sys].[dm_os_sys_info] 
 
 --Select from the table
