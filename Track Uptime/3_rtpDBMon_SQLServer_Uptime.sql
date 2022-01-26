@@ -42,7 +42,7 @@ DECLARE @tblOutput TABLE(
 	[SQLServer_Host]					NVARCHAR(128),
 	[SQLServer_Instance]				NVARCHAR(128),
 	[Downtime_Seconds]					INT,
-	[Downtime]							VARCHAR(8))
+	[Downtime]							VARCHAR(10))
 
 SELECT	@varMax_ID = MAX(ID), 
 		@varMin_ID = MIN(ID) 
@@ -82,7 +82,7 @@ SELECT	[ID],
 		[SQLServer_Host], 
 		[SQLServer_Instance],
 		[Downtime_Seconds], 
-		CAST( [Downtime_Seconds]/60 AS VARCHAR(2)) + 'm:' +  CAST( [Downtime_Seconds]%60 AS VARCHAR(2)) + 's' [Downtime]
+		CAST( [Downtime_Seconds]/60 AS VARCHAR(4)) + 'm:' +  CAST( [Downtime_Seconds]%60 AS VARCHAR(2)) + 's' [Downtime]
 FROM	@tblTemp
 
 INSERT INTO @tblOutput
