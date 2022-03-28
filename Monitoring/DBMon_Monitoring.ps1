@@ -1,10 +1,10 @@
-﻿cls
+cls
 
 #Variable Declarations and Initiations    
-    [string]$varInventory_Server_Name ="<servername>"
+    [string]$varInventory_Server_Name ="<server-name>"
     [string]$varInventory_Database_Name = "DBA_Inventory"
     
-    [string]$varDBMon_Server_Name ="<servername>"
+    [string]$varDBMon_Server_Name ="<server-name>"
     [string]$varDBMon_Database_Name = "DBA_DBMon"
 
     [string]$varTarget_Database_Name = "master"
@@ -41,29 +41,43 @@
 @"
     SET NOCOUNT ON
     GO
+
     --Table variable to store the output of DBCC SQLPERF(LOGSPACE)
-    DECLARE	@tblTLogSpace TABLE	(
-	    [ID]						SMALLINT,
-	    [Database_Name]				SYSNAME, 
-	    [Log_Size_MB]				DECIMAL(12,2), 
-	    [Log_Space_Used_Percent]	DECIMAL(10,2), 
-	    [Status]			BIT)
+    DECLARE	@tblTLogUtilization TABLE	(
+			    [ID]						SMALLINT,
+			    [Database_Name]				SYSNAME, 
+			    [Log_Size_MB]				DECIMAL(12,2), 
+			    [Log_Space_Used_Percent]	DECIMAL(10,2), 
+			    [Status]			BIT)
 
     --Capture the value of Transaction Log usage
-    INSERT INTO @tblTLogSpace([Database_Name], [Log_Size_MB], [Log_Space_Used_Percent], [Status])
+    INSERT INTO @tblTLogUtilization([Database_Name], [Log_Size_MB], [Log_Space_Used_Percent], [Status])
     EXEC('dbcc sqlperf(logspace) with no_infomsgs')
 
-    SELECT		SERVERPROPERTY('servername') AS [Server_Name],
-			    [Database_Name],
-			    [Log_Size_MB], 
-			    [Log_Space_Used_Percent], 
-			    [log_reuse_wait_desc] AS [Log_Reuse_Wait_Desc], 
-			    [recovery_model_desc] AS [Recovery_Model],
-                GETDATE() AS [Date_Captured]
-    FROM		@tblTLogSpace s
-    INNER JOIN	sys.databases db
-		    ON	s.[Database_Name] = db.[name] COLLATE database_default
-    WHERE		s.[Log_Space_Used_Percent] >= 40
+    ;WITH cteTLogBackup AS
+    (
+        SELECT        d.[name] AS [Database_Name],
+                        MAX(b.[backup_finish_date]) AS [TLog_Backup_Timestamp]
+        FROM          sys.databases d
+        LEFT OUTER JOIN [msdb].[dbo].[backupset] b
+        ON            d.[name] = b.[database_name] COLLATE database_default
+        WHERE         [type] = 'l'
+        GROUP BY      d.[name]
+    )
+
+    SELECT			SERVERPROPERTY('servername') AS [Server_Name],
+				    d.[name] AS [Database_Name],
+				    u.[Log_Size_MB],
+				    u.[Log_Space_Used_Percent],
+				    d.log_reuse_wait_desc AS [Log_Reuse_Wait_Desc],
+				    d.[recovery_model_desc] AS [Recovery_Model],
+				    ISNULL(DATEDIFF(mi, [TLog_Backup_Timestamp], GETDATE()), -1) AS [TLog_Backup_Mins_Ago],
+				    GETDATE() AS [Date_Captured]
+    FROM			@tblTLogUtilization u
+    INNER JOIN		sys.databases d
+		    ON		u.[Database_Name] = d.[name] COLLATE database_default
+    LEFT OUTER JOIN cteTLogBackup b
+		    ON		u.[Database_Name] = b.[Database_Name] COLLATE database_default
     GO
 "@
     
@@ -111,18 +125,20 @@
                                                     "[Log_Space_Used_Percent], " + 
                                                     "[Log_Reuse_Wait_Desc], " +
                                                     "[Recovery_Model], " +
+                                                    "[TLog_Backup_Mins_Ago], " +
                                                     "[Date_Captured])" + 
-                                                "VALUES " + 
+                                                " VALUES " + 
                                                 "('" + 
                                                     $TLog_Space_Usage.Server_Name + "', '" + 
                                                     $TLog_Space_Usage.Database_Name + "', " + 
                                                     $TLog_Space_Usage.Log_Size_MB + ", " + 
                                                     $TLog_Space_Usage.Log_Space_Used_Percent + ", '" + 
                                                     $TLog_Space_Usage.Log_Reuse_Wait_Desc + "', '" + 
-                                                    $TLog_Space_Usage.Recovery_Model + "', '" + 
+                                                    $TLog_Space_Usage.Recovery_Model + "', " + 
+                                                    $TLog_Space_Usage.TLog_Backup_Mins_Ago + ", '" +
                                                     $TLog_Space_Usage.Date_Captured +                                             
                                                 "')" 
-
+                            
                             #Insert Transaction log usage into [DBA_DBMon].[load].[tblDBMon_TLog_Space_Usage]
                             Invoke-Sqlcmd -ServerInstance $varDBMon_Server_Name -Database $varDBMon_Database_Name -Query $varIns_SQL_Text
                         }     
