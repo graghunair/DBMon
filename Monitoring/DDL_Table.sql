@@ -30,6 +30,7 @@ CREATE TABLE [load].[tblDBMon_TLog_Space_Usage](
 	[Log_Space_Used_Percent] [decimal](8, 2) NULL,
 	[Log_Reuse_Wait_Desc] [nvarchar](60) NULL,
 	[Recovery_Model] [nvarchar](60) NULL,
+	[TLog_Backup_Mins_Ago] BIGINT NULL,
 	[Date_Captured] [datetime]
 )
 GO
