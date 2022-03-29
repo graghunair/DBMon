@@ -40,11 +40,7 @@ IF EXISTS (SELECT TOP 1 1 FROM [load].[tblDBMon_Database_Full_Backup_Timestamp] 
 					N'<div style="margin-left:500px"></div>' + 
 					N'<tr><th>Server Name</th>' +
 					N'<th>Database Name</th>' +
-					N'<th>Log Size(MB)</th>' + 
-					N'<th>Log Used (%)</th>' +
-					N'<th>Log Reuse Wait Desc</th>' +
-					N'<th>Recovery Model</th>' +
-					N'<th>Backup Minutes Ago</th>' +
+					N'<th>Last Backup</th>' +
 					N'<th>Date Captured</th></tr>' +
 					CAST ( (	SELECT		td = [Server_Name], '',
 											td = [Database_Name], '',
