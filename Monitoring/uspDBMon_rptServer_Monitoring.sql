@@ -9,29 +9,34 @@ GO
 
 CREATE PROCEDURE [dbo].[uspDBMon_rptServer_Monitoring]
 	@Mail_Subject VARCHAR(2000) = '[MOCI]: SQL Server Monitoring',
-	@Mail_Recipients VARCHAR(MAX) = 'dkunnummal@moci.gov.qa;Raghu.gopalakrishnan@microsoft.com',
-	@TLog_Utilization_Threshold TINYINT = 60
+	@Mail_Recipients VARCHAR(MAX) = 'dkunnummal@moci.gov.qa',
+	@TLog_Utilization_Threshold TINYINT = 60,
+	@Disk_Free_Space_GB SMALLINT = 50,
+	@Disk_Free_Space_Percent TINYINT = 10
 AS
 SET NOCOUNT ON
 
 /*
 		Date		:		28th March, 2022
 		Purpose		:		Send an email with SQL Server monitoring status
-		Version		:		1.0
+		Version		:		1.1
 
 		SELECT * FROM [load].[tblDBMon_TLog_Utilization]
 		SELECT * FROM [load].[tblDBMon_Database_State]
+		SELECT * FROM [load].[tblDBMon_Disk_Space_Usage]
 		SELECT * FROM [dbo].[tblDBMon_Servers_Connection_Failed]
 
 		Modification History
 		---------------------
 		28th March, 2022	:	v1.0	:	Inception
+		29th March, 2022	:	v1.1	:	Added logic to report Disk Space Usage below the threshold
 */
 
 --Variable declarations
 DECLARE @tableHTML_TLog_Utilization			VARCHAR(MAX)
 DECLARE @tableHTML_Database_State			VARCHAR(MAX)
 DECLARE @tableHTML_Server_Connection_Failed	VARCHAR(MAX)
+DECLARE @tableHTML_Disk_Space_Usage			VARCHAR(MAX)
 DECLARE @tableHTML							VARCHAR(MAX)
 
 IF EXISTS (SELECT TOP 1 1 FROM [load].[tblDBMon_TLog_Utilization] WHERE [Log_Space_Used_Percent] > @TLog_Utilization_Threshold)
@@ -41,7 +46,7 @@ IF EXISTS (SELECT TOP 1 1 FROM [load].[tblDBMon_TLog_Utilization] WHERE [Log_Spa
 					N'<table border="1";padding-left:50px>' +
 					N'<div style="margin-left:500px"></div>' + 
 					N'<tr><th>Server Name</th>' +
-					N'<tr><th>Database Name</th>' +
+					N'<th>Database Name</th>' +
 					N'<th>Log Size(MB)</th>' + 
 					N'<th>Log Used (%)</th>' +
 					N'<th>Log Reuse Wait Desc</th>' +
@@ -58,8 +63,7 @@ IF EXISTS (SELECT TOP 1 1 FROM [load].[tblDBMon_TLog_Utilization] WHERE [Log_Spa
 											td = REPLACE([Date_Captured], ' ', '_')
 								FROM		[load].[tblDBMon_TLog_Utilization]
 								WHERE		[Log_Space_Used_Percent] > @TLog_Utilization_Threshold
-								ORDER BY 
-											[Server_Name], [Database_Name]
+								ORDER BY	[Server_Name], [Database_Name]
 								FOR XML PATH('tr'), TYPE) AS NVARCHAR(MAX)) +	N'</table>'
 	END
 ELSE
@@ -96,6 +100,37 @@ ELSE
 		SET @tableHTML_Database_State = N'<H3>All database reported state as ONLINE.</H3>'
 	END
 
+IF EXISTS (SELECT TOP 1 1 FROM [load].[tblDBMon_Disk_Space_Usage] WHERE ([Percent_Free] < @Disk_Free_Space_Percent OR [Free_Space_GB] < @Disk_Free_Space_GB))
+	BEGIN
+		SET @tableHTML_Disk_Space_Usage = 
+					N'<H3>Disk Space Usage</H3>' +
+					N'<table border="1";padding-left:50px>' +
+					N'<div style="margin-left:500px"></div>' + 
+					N'<tr><th>Server Name</th>' + 
+					N'<th>Drive</th>' +
+					N'<th>Volume Name</th>' +
+					N'<th>Total Size (GB)</th>' +
+					N'<th>Free_Space (GB)</th>' +
+					N'<th>Percent Free</th>' +
+					N'<th>Date Captured</th></tr>' +
+					CAST ( (	SELECT	 
+											td = [Server_Name], '',
+											td = [Drive], '',
+											td = [Volume_Name], '',
+											td = [Total_Size_GB], '',
+											td = [Free_Space_GB], '',
+											td = [Percent_Free], '',
+											td = REPLACE([Date_Captured], ' ', '_')
+								FROM		[load].[tblDBMon_Disk_Space_Usage]
+								WHERE		([Percent_Free] < @Disk_Free_Space_Percent OR [Free_Space_GB] < @Disk_Free_Space_GB)
+								ORDER BY	[Server_Name], [Drive]
+								FOR XML PATH('tr'), TYPE) AS NVARCHAR(MAX)) + N'</table>'
+	END
+ELSE
+	BEGIN
+		SET @tableHTML_Database_State = N'<H3>All disks reported free space greater than the threshold.</H3>'
+	END
+
 IF EXISTS (SELECT TOP 1 1 FROM [dbo].[tblDBMon_Servers_Connection_Failed])
 	BEGIN
 		SET @tableHTML_Server_Connection_Failed = 
@@ -118,7 +153,7 @@ ELSE
 		SET @tableHTML_Server_Connection_Failed = N'<H3>Connection to all SQL Servers successful.</H3>'
 	END
 
-SET @tableHTML = @tableHTML_TLog_Utilization + @tableHTML_Database_State + @tableHTML_Server_Connection_Failed
+SET @tableHTML = @tableHTML_TLog_Utilization + @tableHTML_Database_State + @tableHTML_Disk_Space_Usage + @tableHTML_Server_Connection_Failed
 
 EXEC msdb.dbo.sp_send_dbmail 
 			@recipients = @Mail_Recipients,
