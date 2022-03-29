@@ -128,7 +128,7 @@ IF EXISTS (SELECT TOP 1 1 FROM [load].[tblDBMon_Disk_Space_Usage] WHERE ([Percen
 	END
 ELSE
 	BEGIN
-		SET @tableHTML_Database_State = N'<H3>All disks reported free space greater than the threshold.</H3>'
+		SET @tableHTML_Disk_Space_Usage = N'<H3>All disks reported free space greater than the threshold.</H3>'
 	END
 
 IF EXISTS (SELECT TOP 1 1 FROM [dbo].[tblDBMon_Servers_Connection_Failed])
