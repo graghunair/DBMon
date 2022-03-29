@@ -69,11 +69,23 @@ CREATE TABLE [load].[tblDBMon_Disk_Space_Usage](
 )
 GO
 
+DROP TABLE IF EXISTS [load].[tblDBMon_Database_Full_Backup_Timestamp]
+GO
+CREATE TABLE [load].[tblDBMon_Database_Full_Backup_Timestamp](
+	[Server_Name] [sysname] NULL,
+	[Database_Name] [sysname] NOT NULL,
+	[Backup_Finish_Date] [datetime] NOT NULL,
+	[Date_Captured] [datetime] NOT NULL
+)
+GO
+
 SELECT * FROM [load].[tblDBMon_TLog_Utilization]
 GO
 SELECT * FROM [load].[tblDBMon_Database_State]
 GO
 SELECT * FROM [load].[tblDBMon_Disk_Space_Usage]
+GO
+SELECT * FROM [load].[tblDBMon_Database_Full_Backup_Timestamp]
 GO
 SELECT * FROM [dbo].[tblDBMon_Servers_Connection_Failed]
 GO
