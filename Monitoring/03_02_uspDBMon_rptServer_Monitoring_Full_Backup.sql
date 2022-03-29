@@ -8,8 +8,8 @@ DROP PROCEDURE IF EXISTS [dbo].[uspDBMon_rptServer_Monitoring_Full_Backup]
 GO
 
 CREATE PROCEDURE [dbo].[uspDBMon_rptServer_Monitoring_Full_Backup]
-	@Mail_Subject VARCHAR(2000) = '[MOCI]: SQL Server Monitoring - Full Backup',
-	@Mail_Recipients VARCHAR(MAX) = 'dkunnummal@moci.gov.qa',
+	@Mail_Subject VARCHAR(2000) = '[Customer]: SQL Server Monitoring - Full Backup',
+	@Mail_Recipients VARCHAR(MAX) = '<emailaddress>',
 	@Full_Backup_Hours_Threshold TINYINT = 24
 AS
 SET NOCOUNT ON
