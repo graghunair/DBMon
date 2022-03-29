@@ -1,6 +1,6 @@
 cls
 
-#Variable Declarations and Initiations    
+#Variable Declarations and Initiations
     [string]$varInventory_Server_Name ="<server-name>"
     [string]$varInventory_Database_Name = "DBA_Inventory"
     
@@ -12,9 +12,11 @@ cls
 #T-SQL Queries
     $varTruncate_Query =
 @"
-    TRUNCATE TABLE [load].[tblDBMon_TLog_Space_Usage]
+    TRUNCATE TABLE [load].[tblDBMon_TLog_Utilization]
     GO
     TRUNCATE TABLE [load].[tblDBMon_Database_State]
+    GO
+    TRUNCATE TABLE [load].[tblDBMon_Disk_Space_Usage]
     GO
     TRUNCATE TABLE [dbo].[tblDBMon_Servers_Connection_Failed]
     GO
@@ -37,7 +39,7 @@ cls
     GO
 "@
 
-    $varGetTLog_Space_Usage = 
+    $varGetTLog_Utilization = 
 @"
     SET NOCOUNT ON
     GO
@@ -95,6 +97,23 @@ cls
     GO
 "@
 
+    $varGetDisk_Space_Usage = 
+@"
+    SET NOCOUNT ON
+    GO
+    SELECT		DISTINCT 
+			    SERVERPROPERTY('servername') AS [Server_Name],
+			    [volume_mount_point] as [Drive], 
+			    [logical_volume_name] as [Volume_Name],
+			    CAST([total_bytes]/1024./1024./1024. as decimal(20,0)) as [Total_Size_GB], 
+			    CAST([available_bytes]/1024./1024./1024. as decimal(20,0)) as [Free_Space_GB],
+			    CAST((CAST([available_bytes] as decimal(20,2))*100/[total_bytes]) as decimal(5,0)) as [Percent_Free],
+			    GETDATE() AS [Date_Captured]
+    FROM		[sys].[master_files] AS f
+    CROSS APPLY [sys].[dm_os_volume_stats](f.database_id, f.[file_id])
+    GO
+"@
+
 #Tuncate existing old data before fresh capture
     Invoke-Sqlcmd -ServerInstance $varDBMon_Server_Name -Database $varDBMon_Database_Name -Query $varTruncate_Query
 
@@ -104,21 +123,25 @@ cls
 #Loop through each SQL Server
     ForEach ($varSQL_Server in $varSQL_Servers)
         {
+            "Server: " + $varSQL_Server.SQL_Server_Instance
             $Is_Alive = ''
             $Is_Alive = Invoke-Sqlcmd -ServerInstance $varSQL_Server.SQL_Server_Instance -Database $varTarget_Database_Name -Query $varIs_Alive -ConnectionTimeout 5
 
             If ($Is_Alive.Is_Alive -eq 1)
                 {
-                    $TLog_Space_Usages = ''
-                    $TLog_Space_Usages = Invoke-Sqlcmd -ServerInstance $varSQL_Server.SQL_Server_Instance -Database $varTarget_Database_Name -Query $varGetTLog_Space_Usage -ConnectionTimeout 5
+                    $TLog_Utilizations = ''
+                    $TLog_Utilizations = Invoke-Sqlcmd -ServerInstance $varSQL_Server.SQL_Server_Instance -Database $varTarget_Database_Name -Query $varGetTLog_Utilization -ConnectionTimeout 5
 
                     $Database_States = ''
                     $Database_States = Invoke-Sqlcmd -ServerInstance $varSQL_Server.SQL_Server_Instance -Database $varTarget_Database_Name -Query $varGetDatabase_State -ConnectionTimeout 5
 
-                    ForEach ($TLog_Space_Usage in $TLog_Space_Usages)
+                    $Disk_Space_Usages = ''
+                    $Disk_Space_Usages = Invoke-Sqlcmd -ServerInstance $varSQL_Server.SQL_Server_Instance -Database $varTarget_Database_Name -Query $varGetDisk_Space_Usage -ConnectionTimeout 5
+
+                    ForEach ($TLog_Utilization in $TLog_Utilizations)
                         {
                             #$TLog_Space_Usage
-                            $varIns_SQL_Text =  "INSERT INTO [load].[tblDBMon_TLog_Space_Usage](" + 
+                            $varIns_SQL_Text =  "INSERT INTO [load].[tblDBMon_TLog_Utilization](" + 
                                                     "[Server_Name], " +
                                                     "[Database_Name], " + 
                                                     "[Log_Size_MB], " + 
@@ -129,14 +152,14 @@ cls
                                                     "[Date_Captured])" + 
                                                 " VALUES " + 
                                                 "('" + 
-                                                    $TLog_Space_Usage.Server_Name + "', '" + 
-                                                    $TLog_Space_Usage.Database_Name + "', " + 
-                                                    $TLog_Space_Usage.Log_Size_MB + ", " + 
-                                                    $TLog_Space_Usage.Log_Space_Used_Percent + ", '" + 
-                                                    $TLog_Space_Usage.Log_Reuse_Wait_Desc + "', '" + 
-                                                    $TLog_Space_Usage.Recovery_Model + "', " + 
-                                                    $TLog_Space_Usage.TLog_Backup_Mins_Ago + ", '" +
-                                                    $TLog_Space_Usage.Date_Captured +                                             
+                                                    $TLog_Utilization.Server_Name + "', '" + 
+                                                    $TLog_Utilization.Database_Name + "', " + 
+                                                    $TLog_Utilization.Log_Size_MB + ", " + 
+                                                    $TLog_Utilization.Log_Space_Used_Percent + ", '" + 
+                                                    $TLog_Utilization.Log_Reuse_Wait_Desc + "', '" + 
+                                                    $TLog_Utilization.Recovery_Model + "', " + 
+                                                    $TLog_Utilization.TLog_Backup_Mins_Ago + ", '" +
+                                                    $TLog_Utilization.Date_Captured +                                             
                                                 "')" 
                             
                             #Insert Transaction log usage into [DBA_DBMon].[load].[tblDBMon_TLog_Space_Usage]
@@ -164,6 +187,32 @@ cls
                                                 "')" 
 
                             #Insert Database State details into [DBA_DBMon].[load].[tblDBMon_Database_State]
+                            Invoke-Sqlcmd -ServerInstance $varDBMon_Server_Name -Database $varDBMon_Database_Name -Query $varIns_SQL_Text
+                        }
+
+                    ForEach ($Disk_Space_Usage in $Disk_Space_Usages)
+                       {
+                            #$Disk_Space_Usage
+                            $varIns_SQL_Text =  "INSERT INTO [load].[tblDBMon_Disk_Space_Usage](" + 
+                                                    "[Server_Name], " +
+                                                    "[Drive], " + 
+                                                    "[Volume_Name], " + 
+                                                    "[Total_Size_GB], " + 
+                                                    "[Free_Space_GB], " +
+                                                    "[Percent_Free], " +
+                                                    "[Date_Captured])" + 
+                                                "VALUES " + 
+                                                "('" + 
+                                                    $Disk_Space_Usage.Server_Name + "', '" + 
+                                                    $Disk_Space_Usage.Drive + "', '" + 
+                                                    $Disk_Space_Usage.Volume_Name + "', '" + 
+                                                    $Disk_Space_Usage.Total_Size_GB + "', '" + 
+                                                    $Disk_Space_Usage.Free_Space_GB + "', '" + 
+                                                    $Disk_Space_Usage.Percent_Free + "', '" + 
+                                                    $Disk_Space_Usage.Date_Captured +                                             
+                                                "')" 
+
+                            #Insert Disk space utilization details into [DBA_DBMon].[load].[tblDBMon_Disk_Space_Usage]
                             Invoke-Sqlcmd -ServerInstance $varDBMon_Server_Name -Database $varDBMon_Database_Name -Query $varIns_SQL_Text
                         }
                 }
