@@ -8,8 +8,8 @@ DROP PROCEDURE IF EXISTS [dbo].[uspDBMon_rptServer_Monitoring]
 GO
 
 CREATE PROCEDURE [dbo].[uspDBMon_rptServer_Monitoring]
-	@Mail_Subject VARCHAR(2000) = '[MOCI]: SQL Server Monitoring',
-	@Mail_Recipients VARCHAR(MAX) = 'dkunnummal@moci.gov.qa',
+	@Mail_Subject VARCHAR(2000) = '[Customer]: SQL Server Monitoring',
+	@Mail_Recipients VARCHAR(MAX) = '<emailaddress>',
 	@TLog_Utilization_Threshold TINYINT = 60,
 	@Disk_Free_Space_GB SMALLINT = 50,
 	@Disk_Free_Space_Percent TINYINT = 10
