@@ -56,9 +56,25 @@ CREATE TABLE [dbo].[tblDBMon_Servers_Connection_Failed](
 )
 GO
 
+DROP TABLE IF EXISTS [load].[tblDBMon_Disk_Space_Usage]
+GO
+CREATE TABLE [load].[tblDBMon_Disk_Space_Usage](
+	[Server_Name] [sysname] NULL,
+	[Drive] [nvarchar](5) NULL,
+	[Volume_Name] [nvarchar](256) NULL,
+	[Total_Size_GB] [decimal](20, 2) NULL,
+	[Free_Space_GB] [decimal](20, 2) NULL,
+	[Percent_Free] [decimal](5, 2) NULL,
+	[Date_Captured] [datetime] DEFAULT GETDATE() NOT NULL
+)
+GO
+
 SELECT * FROM [load].[tblDBMon_TLog_Space_Usage]
 GO
 SELECT * FROM [load].[tblDBMon_Database_State]
 GO
+SELECT * FROM [load].[tblDBMon_Disk_Space_Usage]
+GO
 SELECT * FROM [dbo].[tblDBMon_Servers_Connection_Failed]
 GO
+
