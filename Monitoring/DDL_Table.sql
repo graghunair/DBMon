@@ -21,9 +21,9 @@ GO
 CREATE SCHEMA [load] AUTHORIZATION [dbo]
 GO
 
-DROP TABLE IF EXISTS [load].[tblDBMon_TLog_Space_Usage]
+DROP TABLE IF EXISTS [load].[tblDBMon_TLog_Utilization]
 GO
-CREATE TABLE [load].[tblDBMon_TLog_Space_Usage](
+CREATE TABLE [load].[tblDBMon_TLog_Utilization](
 	[Server_Name] [sysname] NULL,
 	[Database_Name] [sysname] NOT NULL,
 	[Log_Size_MB] [decimal](12, 2) NULL,
@@ -69,7 +69,7 @@ CREATE TABLE [load].[tblDBMon_Disk_Space_Usage](
 )
 GO
 
-SELECT * FROM [load].[tblDBMon_TLog_Space_Usage]
+SELECT * FROM [load].[tblDBMon_TLog_Utilization]
 GO
 SELECT * FROM [load].[tblDBMon_Database_State]
 GO
