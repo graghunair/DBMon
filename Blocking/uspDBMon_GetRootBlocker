@@ -1,0 +1,161 @@
+/*
+		Date	:	24th Sept 2022
+		Purpose	:	This script created 2 User-Tables and 1 Stored Procedure to log Root Blocker and Blocked Session_ID into tables for analysis
+		Version	:	1.0
+		License:
+					This script is provided "AS IS" with no warranties, and confers no rights.
+
+					EXEC [dbo].[uspDBMon_GetRootBlocker]
+					SELECT * FROM [tblDBMon_Root_Blocker_Session_ID]
+					SELECT * FROM [tblDBMon_Blocked_Session_ID]
+
+		Modification History
+		----------------------
+		Sept	24th, 2022	:	v1.0	:	Raghu Gopalakrishnan	:	Inception
+*/
+
+SET NOCOUNT ON
+
+USE [<dbname>]
+GO
+
+IF EXISTS (SELECT TOP 1 1 FROM sys.tables WHERE [name] = 'tblDBMon_Root_Blocker_Session_ID' AND SCHEMA_NAME(schema_id) = 'dbo')
+	BEGIN
+		DROP TABLE [dbo].[tblDBMon_Root_Blocker_Session_ID]
+		PRINT 'Table [dbo].[tblDBMon_Root_Blocker_Session_ID] already exists. Dropped.'
+	END
+GO
+CREATE TABLE [dbo].[tblDBMon_Root_Blocker_Session_ID](
+	[Date_Captured] [datetime] NULL,
+	[Database_Name] [sysname] NULL,
+	[Session_ID] [smallint] NOT NULL,
+	[Blocked_Time] [bigint] NOT NULL,
+	[Command] [nvarchar](26) NOT NULL,
+	[Status] [nvarchar](30) NOT NULL,
+	[Login_Name] [nvarchar](128) NULL,
+	[Host_Name] [nvarchar](128) NULL,
+	[Program_Name] [nvarchar](128) NULL,
+	[Login_Time] [datetime] NOT NULL,
+	[Last_Batch] [datetime] NOT NULL,
+	[Isolation_Level] [smallint] NULL,
+	[SQL_handle] [binary](20) NOT NULL,
+	[Text] [nvarchar](250) NULL
+)
+GO
+ALTER TABLE [dbo].[tblDBMon_Root_Blocker_Session_ID] ADD  DEFAULT (getdate()) FOR [Date_Captured]
+GO
+CREATE CLUSTERED INDEX [IDX_tblDBMon_Root_Blocker_Session_ID_Date_Captured] ON [dbo].[tblDBMon_Root_Blocker_Session_ID](Date_Captured)
+GO
+
+IF EXISTS (SELECT TOP 1 1 FROM sys.tables WHERE [name] = 'tblDBMon_Blocked_Session_ID' AND SCHEMA_NAME(schema_id) = 'dbo')
+	BEGIN
+		DROP TABLE [dbo].[tblDBMon_Blocked_Session_ID]
+		PRINT 'Table [dbo].[tblDBMon_Blocked_Session_ID] already exists. Dropped.'
+	END
+GO
+CREATE TABLE [dbo].[tblDBMon_Blocked_Session_ID](
+	[Date_Captured] [datetime] NOT NULL,
+	[Session_ID] [smallint] NOT NULL,
+	[Blocked_By_Session_ID] [smallint] NOT NULL,
+	[WaitTime_Seconds] [decimal](20, 0) NULL,
+	[Program_Name] [nvarchar](128) NOT NULL,
+	[Hostname] [nvarchar](128) NOT NULL,
+	[Loginname] [nvarchar](128) NOT NULL,
+	[Command] [nvarchar](26) NOT NULL
+)
+GO
+ALTER TABLE [dbo].[tblDBMon_Blocked_Session_ID] ADD DEFAULT (getdate()) FOR [Date_Captured]
+GO
+CREATE CLUSTERED INDEX [IDX_tblDBMon_Blocked_Session_ID_Date_Captured] ON [dbo].[tblDBMon_Blocked_Session_ID](Date_Captured)
+GO
+
+
+--USE [<dbname>]
+IF EXISTS (SELECT TOP 1 1 FROM sys.procedures WHERE [name] = 'uspDBMon_GetRootBlocker' AND SCHEMA_NAME(schema_id) = 'dbo')
+	BEGIN
+		DROP PROCEDURE [uspDBMon_GetRootBlocker]
+		PRINT 'SP [dbo].[uspDBMon_GetRootBlocker] already exists. Dropped.'
+	END
+GO
+CREATE PROCEDURE [dbo].[uspDBMon_GetRootBlocker]
+            @varBlocking_Threshold_Seconds INT = 60
+AS
+SET NOCOUNT ON
+/*
+		Date	:	24th Sept 2022
+		Purpose	:	This Stored Procedure is used log Root Blocker and Blocked Session_ID into tables for analysis
+		Version	:	1.0
+		License:
+					This script is provided "AS IS" with no warranties, and confers no rights.
+
+					EXEC [dbo].[uspDBMon_GetRootBlocker]
+					SELECT * FROM [tblDBMon_Root_Blocker_Session_ID]
+					SELECT * FROM [tblDBMon_Blocked_Session_ID]
+
+		Modification History
+		----------------------
+		Sept	24th, 2022	:	v1.0	:	Raghu Gopalakrishnan	:	Inception
+*/
+
+--Variable declarations
+DECLARE @varBlocked_Time BIGINT
+
+IF EXISTS (SELECT TOP 1 1 FROM sys.sysprocesses where blocked <> 0)
+	BEGIN
+        SELECT @varBlocked_Time = MAX(waittime) FROM sys.sysprocesses WHERE blocked <> 0
+
+        -- INSERT INTO [dbo].[tblDBMon_Root_Blocker] TABLE THE INFORMATION ABOUT THE ROOT BLOCKER
+        INSERT INTO [dbo].[tblDBMon_Root_Blocker_Session_ID] 
+        SELECT 
+                            getdate()
+                            ,DB_NAME(s1.[dbid])
+                            ,s1.spid
+                            ,@varBlocked_Time
+                            ,s1.cmd 
+                            ,s1.[status]  
+                            ,ltrim (rtrim (s1.loginame) ) login_name
+                            ,ltrim (rtrim (s1.hostname) ) hostname
+                            ,ltrim (rtrim (s1.[program_name]) ) programname
+                            ,s1.login_time 
+                            ,s1.last_batch
+                            ,ss.transaction_isolation_level
+                            ,s1.[sql_handle]
+                            ,CASE txt.[encrypted]
+                                    WHEN 1 THEN 'Encrypted'
+                                    ELSE SUBSTRING(ISNULL(cast([text] AS NVARCHAR(250)), N'empty'), 0,250)
+                            END AS [text]     
+        FROM          sys.sysprocesses s1
+        INNER JOIN    sys.sysprocesses s2
+                    ON     s1.spid = s2.blocked 
+        INNER JOIN sys.dm_exec_sessions ss
+                    ON     s1.spid = ss.session_id 
+        CROSS APPLY sys.dm_exec_sql_text (s1.[sql_handle]) txt
+        WHERE         s1.blocked = 0
+
+		INSERT INTO [dbo].[tblDBMon_Blocked_Session_ID]
+        SELECT  GETDATE() AS [Date_Captured],
+				[spid] AS [Session_ID], 
+                [blocked] AS [Blocked_By_Session_ID],
+                CAST([waittime]/1000. AS DECIMAL(20,0)) AS [WaitTime_Seconds],
+                [program_name] AS [Program_Name],
+                [hostname] AS [Hostname],
+                [loginame] AS [Loginname],
+				[cmd] AS [Command]
+		FROM    [sys].[sysprocesses] s1
+		WHERE	[blocked] <> 0
+		ORDER BY [waittime] desc
+	END
+
+    DELETE TOP (10000) 
+    FROM   [dbo].[tblDBMon_Root_Blocker_Session_ID] 
+    WHERE  [Date_Captured] < GETDATE() - 100
+
+	DELETE TOP (10000) 
+    FROM   [dbo].[tblDBMon_Blocked_Session_ID]
+    WHERE  [Date_Captured] < GETDATE() - 100
+GO
+
+EXEC [dbo].[uspDBMon_GetRootBlocker]
+SELECT * FROM [tblDBMon_Root_Blocker_Session_ID]
+SELECT * FROM [tblDBMon_Blocked_Session_ID]
+GO
