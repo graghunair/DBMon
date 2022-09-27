@@ -1,15 +1,23 @@
-USE [<dbname>]        
+/*
+		Date	:	27th Sept 2022
+		Purpose	:	This script creates 1 User-Table and 1 Stored Procedure to capture disk IO metrics
+		Version	:	1.0
+		License:	This script is provided "AS IS" with no warranties, and confers no rights.
+
+				EXEC [dbo].[uspDBMon_GetWaitStats]
+				SELECT * FROM [dbo].[tblDBMon_DM_OS_Wait_Stats]
+
+				Reference: https://www.sqlskills.com/blogs/paul/wait-statistics-or-please-tell-me-where-it-hurts/
+				
+	Modification History
+	-----------------------
+	Sept 27th, 2022	:	v1.0	:	Raghu	:	Inception
+*/
+USE [dba_local]        
 GO        
 
-SET ANSI_NULLS ON        
-GO        
-SET QUOTED_IDENTIFIER ON        
-GO        
-IF  EXISTS (SELECT TOP 1 1 FROM sys.tables WHERE [name] = 'tblDBMon_DM_IO_Virtual_File_Stats' AND SCHEMA_NAME([schema_id]) = 'dbo')            
-	BEGIN                
-		DROP TABLE [dbo].[tblDBMon_DM_IO_Virtual_File_Stats]                
-		PRINT 'Table: [dbo].[tblDBMon_DM_IO_Virtual_File_Stats] dropped.'            
-	END        
+DROP TABLE IF EXISTS [dbo].[tblDBMon_DM_IO_Virtual_File_Stats]                
+PRINT 'Table: [dbo].[tblDBMon_DM_IO_Virtual_File_Stats] dropped.'            
 GO         
 
 CREATE TABLE [dbo].[tblDBMon_DM_IO_Virtual_File_Stats](                            
@@ -28,19 +36,8 @@ CREATE TABLE [dbo].[tblDBMon_DM_IO_Virtual_File_Stats](
 	[PhysicalName] [nvarchar](260) NOT NULL)       
 GO
 
-USE [<dbname>]
-GO
-SET NOCOUNT ON
-
-IF EXISTS (SELECT 1 FROM [sys].[procedures] WHERE [name] = 'uspDBMon_GetIOStats')    
-	BEGIN        
-		PRINT 'DROPPING EXISTING uspDBMon_GetIOStats PROCEDURE'        
-		DROP PROCEDURE [dbo].[uspDBMon_GetIOStats]    
-	END
-
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
+DROP PROCEDURE IF EXISTS [dbo].[uspDBMon_GetIOStats]    
+PRINT 'Procedure: [dbo].[uspDBMon_GetIOStats] dropped.'            
 GO
 
 CREATE PROCEDURE [dbo].[uspDBMon_GetIOStats]
