@@ -1,0 +1,194 @@
+/*
+		Date	:	23rd Oct 2022
+		Purpose	:	This script creates 1 User-Table and 1 Stored Procedure to log long running queries for analysis
+		Version	:	1.0
+		License:
+					This script is provided "AS IS" with no warranties, and confers no rights.
+
+					EXEC [dbo].[uspDBMon_GetLongRunningQueries]
+					SELECT * FROM [dbo].[tblDBMon_Long_Running_Queries]
+
+		Modification History
+		----------------------
+		Oct	23rd, 2022	:	v1.0	:	Raghu Gopalakrishnan	:	Inception
+*/
+
+SET NOCOUNT ON
+GO
+USE [dba_local]
+GO
+DROP TABLE IF EXISTS [dbo].[tblDBMon_Long_Running_Queries]
+GO
+CREATE TABLE [dbo].[tblDBMon_Long_Running_Queries](
+	[Date_Captured] [datetime] CONSTRAINT [DF_tblDBMon_Long_Running_Queries_Date_Captured] DEFAULT GETDATE() NOT NULL,
+	[Session_ID] [smallint] NOT NULL,
+	[Start_Time] [datetime] NOT NULL,
+	[Login_Time] [datetime] NOT NULL,
+	[Duration_Minutes] [int] NULL,
+	[Host_Name] [nvarchar](128) NULL,
+	[Login_Name] [nvarchar](128) NULL,
+	[Program_Name] [nvarchar](128) NULL,
+	[Status] [nvarchar](30) NOT NULL,
+	[Blocking_Session_ID] [smallint] NULL,
+	[Wait_Type] [nvarchar](60) NULL,
+	[Wait_Time_Seconds] [decimal](20, 0) NULL,
+	[Total_Elapsed_Time_Seconds] [decimal](20, 0) NULL,
+	[SQL_Handle] [varbinary](64) NULL,
+	[Statement_SQL_Handle] [varbinary](64) NULL,
+	[SQL_Text] [nvarchar](500) NULL,
+	[Date_Updated] [datetime] CONSTRAINT [DF_tblDBMon_Long_Running_Queries_Date_Updated] DEFAULT GETDATE() NOT NULL
+)
+GO
+
+CREATE CLUSTERED INDEX [IDX_tblDBMon_Long_Running_Queries_Date_Captured]
+ON [dbo].[tblDBMon_Long_Running_Queries]([Date_Captured])
+
+CREATE NONCLUSTERED INDEX [IDX_tblDBMon_Long_Running_Queries_Login_Time_Start_Time_Session_ID]
+ON [dbo].[tblDBMon_Long_Running_Queries] ([Login_Time], [Start_Time], [Session_ID])
+GO
+
+INSERT INTO [dbo].[tblDBMon_Long_Running_Queries]
+			([Date_Captured],
+			[Session_ID],
+			[Start_Time],
+			[Login_Time],
+			[Duration_Minutes],
+			[Host_Name],
+			[Login_Name],
+			[Program_Name],
+			[Status],
+			[Blocking_Session_ID],
+			[Wait_Type],
+			[Wait_Time_Seconds],
+			[Total_Elapsed_Time_Seconds],
+			[SQL_Handle],
+			[Statement_SQL_Handle],
+			[SQL_Text],
+			[Date_Updated])
+SELECT		GETDATE() AS [Date_Captured],
+			der.[session_id] AS [Session_ID],
+			der.[start_time] AS [Start_Time],
+			sp.[login_time] AS [Login_Time],
+			datediff(mi, [start_time], getdate()) AS [Duration_Minutes],
+			LTRIM (RTRIM ([hostname])) AS [Host_Name],
+			LTRIM (RTRIM ([loginame])) AS [Login_Name],
+			LTRIM (RTRIM (sp.[program_name])) AS [Program_Name],
+			der.[status] AS [Status],
+			der.[blocking_session_id] AS [Blocking_Session_ID],
+			der.[wait_type] AS [Wait_Type],
+			CAST(der.[wait_time]/1000. AS DECIMAL(20,0)) AS [Wait_Time_Seconds],
+			CAST(der.[total_elapsed_time]/1000. AS DECIMAL(20,0)) AS [Total_Elapsed_Time_Seconds],
+			der.[sql_handle] AS [SQL_Handle],
+			der.[statement_sql_handle] AS [Statement_SQL_Handle],
+			CASE dest.[encrypted]
+                    WHEN 1 THEN 'Encrypted'
+                    ELSE SUBSTRING(ISNULL(CAST([text] AS NVARCHAR(500)), N'empty'), 0,500)
+            END AS [SQL_Text], 
+			GETDATE() AS [Date_Updated]
+FROM		sys.dm_exec_requests der
+INNER JOIN	sys.sysprocesses sp
+		ON	der.[session_id] = sp.spid
+OUTER APPLY	sys.dm_exec_sql_text(der.[sql_handle]) dest
+WHERE		der.[session_id] > 50
+ORDER BY	der.[session_id]
+GO
+
+DROP PROC IF EXISTS [dbo].[uspDBMon_GetLongRunningQueries]
+GO
+CREATE PROC [dbo].[uspDBMon_GetLongRunningQueries]
+@Query_Duration_Threshold_Minutes TINYINT = 5
+AS
+SET NOCOUNT ON
+/*
+		EXEC [dbo].[uspDBMon_GetLongRunningQueries]
+		SELECT * FROM [dbo].[tblDBMon_Long_Running_Queries]
+*/
+--Get the queries running beyond the threshold specified under @Query_Duration_Threshold_Minutes
+;WITH cteLong_Running_Queries
+AS(
+		SELECT		GETDATE() AS [Date_Captured],
+					der.[session_id] AS [Session_ID],
+					der.[start_time] AS [Start_Time],
+					sp.[login_time] AS [Login_Time],
+					datediff(mi, [start_time], getdate()) AS [Duration_Minutes],
+					LTRIM (RTRIM ([hostname])) AS [Host_Name],
+					LTRIM (RTRIM ([loginame])) AS [Login_Name],
+					LTRIM (RTRIM (sp.[program_name])) AS [Program_Name],
+					der.[status] AS [Status],
+					der.[blocking_session_id] AS [Blocking_Session_ID],
+					der.[wait_type] AS [Wait_Type],
+					CAST(der.[wait_time]/1000. AS DECIMAL(20,0)) AS [Wait_Time_Seconds],
+					CAST(der.[total_elapsed_time]/1000. AS DECIMAL(20,0)) AS [Total_Elapsed_Time_Seconds],
+					der.[sql_handle] AS [SQL_Handle],
+					der.[statement_sql_handle] AS [Statement_SQL_Handle],
+					CASE dest.[encrypted]
+											WHEN 1 THEN 'Encrypted'
+											ELSE SUBSTRING(ISNULL(CAST([text] AS NVARCHAR(500)), N'empty'), 0,500)
+									END AS [SQL_Text], 
+					GETDATE() AS [Date_Updated]
+		FROM		sys.dm_exec_requests der
+		INNER JOIN	sys.sysprocesses sp
+				ON	der.[session_id] = sp.spid
+		OUTER APPLY	sys.dm_exec_sql_text(der.[sql_handle]) dest
+		WHERE		der.[session_id] > 50
+		AND			datediff(mi, [start_time], getdate()) > @Query_Duration_Threshold_Minutes
+	)
+
+--Upsert into the table
+MERGE			[dbo].[tblDBMon_Long_Running_Queries] T
+USING			[cteLong_Running_Queries] S 
+	ON			T.Login_Time = S.Login_Time
+	AND			T.Start_Time = S.Start_Time
+	AND			T.Session_ID = S.Session_ID
+WHEN MATCHED 
+THEN
+UPDATE SET 
+				[Duration_Minutes]=S.[Duration_Minutes],
+				[Status] = S.[Status],
+				[Blocking_Session_ID] = S.[Blocking_Session_ID],
+				[Wait_Type] = S.[Wait_Type],
+				[Wait_Time_Seconds] = S.[Wait_Time_Seconds],
+				[Total_Elapsed_Time_Seconds] = S.[Total_Elapsed_Time_Seconds],
+				[Date_Updated] = GETDATE()
+WHEN NOT MATCHED BY TARGET 
+THEN 
+INSERT (	[Date_Captured],
+			[Session_ID],
+			[Start_Time],
+			[Login_Time],
+			[Duration_Minutes],
+			[Host_Name],
+			[Login_Name],
+			[Program_Name],
+			[Status],
+			[Blocking_Session_ID],
+			[Wait_Type],
+			[Wait_Time_Seconds],
+			[Total_Elapsed_Time_Seconds],
+			[SQL_Handle],
+			[Statement_SQL_Handle],
+			[SQL_Text],
+			[Date_Updated])
+VALUES (	S.[Date_Captured],
+			S.[Session_ID],
+			S.[Start_Time],
+			S.[Login_Time],
+			S.[Duration_Minutes],
+			S.[Host_Name],
+			S.[Login_Name],
+			S.[Program_Name],
+			S.[Status],
+			S.[Blocking_Session_ID],
+			S.[Wait_Type],
+			S.[Wait_Time_Seconds],
+			S.[Total_Elapsed_Time_Seconds],
+			S.[SQL_Handle],
+			S.[Statement_SQL_Handle],
+			S.[SQL_Text],
+			S.[Date_Updated]);
+GO
+
+EXEC	[dbo].[uspDBMon_GetLongRunningQueries]
+SELECT	* 
+FROM	[dbo].[tblDBMon_Long_Running_Queries]
+GO
