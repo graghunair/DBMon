@@ -27,6 +27,7 @@ CREATE TABLE [dbo].[tblDBMon_Long_Running_Queries](
 	[Duration_Minutes] [int] NULL,
 	[Host_Name] [nvarchar](128) NULL,
 	[Login_Name] [nvarchar](128) NULL,
+	[Command] [nvarchar](32) NULL,
 	[Program_Name] [nvarchar](128) NULL,
 	[Status] [nvarchar](30) NOT NULL,
 	[Blocking_Session_ID] [smallint] NULL,
@@ -55,6 +56,7 @@ INSERT INTO [dbo].[tblDBMon_Long_Running_Queries]
 			[Duration_Minutes],
 			[Host_Name],
 			[Login_Name],
+			[Command],
 			[Program_Name],
 			[Status],
 			[Blocking_Session_ID],
@@ -72,6 +74,7 @@ SELECT		GETDATE() AS [Date_Captured],
 			datediff(mi, [start_time], getdate()) AS [Duration_Minutes],
 			LTRIM (RTRIM ([hostname])) AS [Host_Name],
 			LTRIM (RTRIM ([loginame])) AS [Login_Name],
+			[command] AS [Command],
 			LTRIM (RTRIM (sp.[program_name])) AS [Program_Name],
 			der.[status] AS [Status],
 			der.[blocking_session_id] AS [Blocking_Session_ID],
@@ -90,6 +93,9 @@ INNER JOIN	sys.sysprocesses sp
 		ON	der.[session_id] = sp.spid
 OUTER APPLY	sys.dm_exec_sql_text(der.[sql_handle]) dest
 WHERE		der.[session_id] > 50
+AND			[command] NOT IN ('BACKUP DATABASE', 'BACKUP LOG', 'XE DISPATCHER', 'TASK MANAGER')
+AND			[text] <> 'sp_server_diagnostics'
+AND			datediff(mi, [start_time], getdate()) > 5
 ORDER BY	der.[session_id]
 GO
 
@@ -113,6 +119,7 @@ AS(
 					datediff(mi, [start_time], getdate()) AS [Duration_Minutes],
 					LTRIM (RTRIM ([hostname])) AS [Host_Name],
 					LTRIM (RTRIM ([loginame])) AS [Login_Name],
+					[command] AS [Command],
 					LTRIM (RTRIM (sp.[program_name])) AS [Program_Name],
 					der.[status] AS [Status],
 					der.[blocking_session_id] AS [Blocking_Session_ID],
@@ -131,6 +138,8 @@ AS(
 				ON	der.[session_id] = sp.spid
 		OUTER APPLY	sys.dm_exec_sql_text(der.[sql_handle]) dest
 		WHERE		der.[session_id] > 50
+		AND			[command] NOT IN ('BACKUP DATABASE', 'BACKUP LOG', 'XE DISPATCHER', 'TASK MANAGER')
+		AND			[text] <> 'sp_server_diagnostics'
 		AND			datediff(mi, [start_time], getdate()) > @Query_Duration_Threshold_Minutes
 	)
 
@@ -143,7 +152,8 @@ USING			[cteLong_Running_Queries] S
 WHEN MATCHED 
 THEN
 UPDATE SET 
-				[Duration_Minutes]=S.[Duration_Minutes],
+				[Duration_Minutes] = S.[Duration_Minutes],
+				[Command] = S.[Command],
 				[Status] = S.[Status],
 				[Blocking_Session_ID] = S.[Blocking_Session_ID],
 				[Wait_Type] = S.[Wait_Type],
@@ -159,6 +169,7 @@ INSERT (	[Date_Captured],
 			[Duration_Minutes],
 			[Host_Name],
 			[Login_Name],
+			[Command],
 			[Program_Name],
 			[Status],
 			[Blocking_Session_ID],
@@ -176,6 +187,7 @@ VALUES (	S.[Date_Captured],
 			S.[Duration_Minutes],
 			S.[Host_Name],
 			S.[Login_Name],
+			S.[Command],
 			S.[Program_Name],
 			S.[Status],
 			S.[Blocking_Session_ID],
