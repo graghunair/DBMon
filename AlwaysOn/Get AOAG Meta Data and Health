@@ -1,0 +1,45 @@
+/*
+	Get AOAG Listener Name, Listener Port, Availability Group Name and Database Name
+*/
+
+SELECT			agl.[dns_name] AS [Listener_Name],
+				REPLACE(REPLACE(agl.[ip_configuration_string_from_cluster] , '(''IP Address: ',''), ''')','') AS [Listener_IP_Address],
+				agl.[port] AS [Listener_Port],
+				ag.[name] AS [Availability_Group_Name], 
+				DB_NAME(drs.[database_id]) AS [Database_Name]
+FROM			sys.dm_hadr_database_replica_states drs
+INNER JOIN		sys.availability_groups ag on ag.[group_id] = drs.[group_id]
+INNER JOIN		sys.availability_group_listeners agl on agl.[group_id] = ag.[group_id]
+
+/*
+	Get AOAG Health
+*/
+
+SELECT		GETDATE()										AS [Date_Captured],
+			ar.[replica_server_name]						AS [Server_Name], 
+			adc.[database_name]								AS [Database_Name], 
+			ag.[name]										AS [AG_Name], 
+			drs.[synchronization_state_desc]				AS [Synchronization_State],
+			drs.[synchronization_health_desc]				AS [Synchronization_Health], 
+			drs.[last_sent_time]							AS [Last_Sent_Time], 
+			drs.[last_received_time]						AS [Last_Received_Time], 
+			drs.[last_hardened_time]						AS [Last_Hardened_Time], 
+			drs.[last_redone_time]							AS [Last_Redone_Time], 
+			drs.[last_commit_time]							AS [Last_Commit_Time],
+			drs.[log_send_queue_size]						AS [Log_Send_Queue_Size(KB)], 
+			drs.[redo_queue_size]							AS [Redo_Queue_Size(KB)]
+FROM		[sys].[dm_hadr_database_replica_states]			AS drs
+INNER JOIN	[sys].[availability_databases_cluster]			AS adc 
+		ON	drs.group_id = adc.group_id 
+		AND drs.group_database_id = adc.group_database_id
+INNER JOIN	[sys].[availability_groups]						AS ag
+		ON	ag.group_id = drs.group_id
+INNER JOIN	[sys].[availability_replicas]					AS ar 
+		ON	drs.group_id = ar.group_id 
+		AND drs.replica_id = ar.replica_id
+WHERE	1=1
+--		AND		adc.[database_name]		= @Database_Name
+		AND	drs.[is_local]	= 0
+ORDER BY 
+			ar.[replica_server_name], 
+			adc.[database_name]
