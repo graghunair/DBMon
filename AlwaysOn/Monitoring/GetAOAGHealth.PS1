@@ -24,6 +24,8 @@ $varTruncate_Query =
     GO
     TRUNCATE TABLE [dbo].[tblDBMon_Transaction_Log_Free_Space]
     GO
+    TRUNCATE TABLE [dbo].[tblDBMon_SQL_Server_Info]
+    GO
 "@
 
 $varGet_AOAG_Primary_Replicas =
@@ -103,6 +105,26 @@ $varGet_Transaction_Log_Free_Space =
     GO
 "@
 
+$varGet_SQL_Server_Info = 
+@"
+    SET NOCOUNT ON
+    GO
+    DECLARE @varOS_Version nvarchar(256)
+    SELECT	@varOS_Version = [host_distribution]
+    FROM	sys.dm_os_host_info
+
+    SELECT	CAST(SERVERPROPERTY('servername') AS SYSNAME) AS [SQL_Server_Name],
+		    DATEDIFF(dd, sqlserver_start_time, GETDATE()) AS [UpTime_Days],
+		    CAST(SERVERPROPERTY('ProductVersion') AS VARCHAR(20)) AS [SQL_Server_Version],
+		    @varOS_Version AS [OS_Version],
+		    [cpu_count] AS [CPU_Count],
+		    CAST([physical_memory_kb]/1024./1024. AS DECIMAL(20,2)) AS [RAM],
+		    CAST([committed_kb]/1024./1024. AS DECIMAL(20,2)) AS [RAM_Committed],
+		    GETDATE() AS [Date_Captured]
+    FROM	sys.dm_os_sys_info 
+    GO
+"@
+
 Invoke-Sqlcmd -ServerInstance $varDBA_Server_Name -Database $varDBA_Database_Name -Query $varTruncate_Query -ConnectionTimeout 5
 
 foreach ($varSQLServer in $varSQLServers)
@@ -111,6 +133,7 @@ foreach ($varSQLServer in $varSQLServers)
         $varAOAG_Details =                Invoke-Sqlcmd -ServerInstance $varSQLServer -Database $varDBA_Database_Name -Query $varGet_AOAG_Details -ConnectionTimeout 5
         $varDisk_Free_Spaces =            Invoke-Sqlcmd -ServerInstance $varSQLServer -Database $varDBA_Database_Name -Query $varGet_Disk_Free_Space -ConnectionTimeout 5
         $varTransaction_Log_Free_Spaces = Invoke-Sqlcmd -ServerInstance $varSQLServer -Database $varDBA_Database_Name -Query $varGet_Transaction_Log_Free_Space -ConnectionTimeout 5
+        $varSQL_Server_Info =             Invoke-Sqlcmd -ServerInstance $varSQLServer -Database $varDBA_Database_Name -Query $varGet_SQL_Server_Info -ConnectionTimeout 5
 
         foreach ($varAOAG_Primary_Replica in $varAOAG_Primary_Replicas)
             {
@@ -207,5 +230,29 @@ foreach ($varSQLServer in $varSQLServers)
                 #Insert Transaction Log Free Space Details into [DBA_Admin].[dbo].[tblDBMon_Transaction_Log_Free_Space]
                 Invoke-Sqlcmd -ServerInstance $varDBA_Server_Name -Database $varDBA_Database_Name -Query $varIns_SQL_Text                
             }
+
+        $varIns_SQL_Text = "INSERT INTO	[dbo].[tblDBMon_SQL_Server_Info](" +
+                            "[SQL_Server_Name], " +
+				            "[UpTime_Days], " +
+                            "[SQL_Server_Version], " +
+                            "[OS_Version], " +
+                            "[CPU_Count], " +
+                            "[RAM], " +
+                            "[RAM_Committed], " +
+				            "[Date_Captured]) " +
+                            "VALUES " +
+                            "('" +
+                            $varSQL_Server_Info.SQL_Server_Name + "', '" +
+                            $varSQL_Server_Info.UpTime_Days + "', '" +
+                            $varSQL_Server_Info.SQL_Server_Version + "', '" +
+                            $varSQL_Server_Info.OS_Version + "', '" +
+                            $varSQL_Server_Info.CPU_Count + "', '" +
+                            $varSQL_Server_Info.RAM + "', '" +
+                            $varSQL_Server_Info.RAM_Committed + "', '" +
+                            $varSQL_Server_Info.Date_Captured +
+                            "')"   
+                
+    #Insert SQL Server info into [DBA_Admin].[dbo].[tblDBMon_SQL_Server_Info]
+    Invoke-Sqlcmd -ServerInstance $varDBA_Server_Name -Database $varDBA_Database_Name -Query $varIns_SQL_Text 
 
     }
