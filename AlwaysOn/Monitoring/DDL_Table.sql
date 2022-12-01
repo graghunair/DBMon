@@ -13,7 +13,8 @@ CREATE TABLE [dbo].[tblDBMon_AOAG_Database_Details](
 	[Synchronization_Health] [nvarchar](60) NULL,
 	[Log_Send_Queue_Size] [bigint] NULL,
 	[Redo_Queue_Size] [bigint] NULL,
-	[Date_Captured] [datetime] NULL)
+	[Date_Captured] [datetime] NOT NULL
+) ON [PRIMARY]
 GO
 
 DROP TABLE IF EXISTS [dbo].[tblDBMon_AOAG_Primary_Replica]
@@ -24,8 +25,9 @@ CREATE TABLE [dbo].[tblDBMon_AOAG_Primary_Replica](
 	[Listener_Port] [int] NULL,
 	[Availability_Group_Name] [sysname] NULL,
 	[Role] [nvarchar](60) NULL,
-	[Replica_Name] [sysname] NULL,
-	[Date_Captured] [datetime] NULL)
+	[Replica_Name] [sysname] NOT NULL,
+	[Date_Captured] [datetime] NOT NULL
+) ON [PRIMARY]
 GO
 
 DROP TABLE IF EXISTS [dbo].[tblDBMon_Disk_Free_Space]
@@ -37,7 +39,22 @@ CREATE TABLE [dbo].[tblDBMon_Disk_Free_Space](
 	[Total_Size_GB] [decimal](20, 2) NULL,
 	[Free_Space_GB] [decimal](20, 2) NULL,
 	[Percent_Free] [decimal](5, 2) NULL,
-	[Date_Captured] [datetime] NULL) 
+	[Date_Captured] [datetime] NOT NULL
+) ON [PRIMARY]
+GO
+
+DROP TABLE IF EXISTS [dbo].[tblDBMon_SQL_Server_Info]
+GO
+CREATE TABLE [dbo].[tblDBMon_SQL_Server_Info](
+	[SQL_Server_Name] [sysname] NULL,
+	[UpTime_Days] [int] NULL,
+	[SQL_Server_Version] [varchar](20) NULL,
+	[OS_Version] [nvarchar](256) NULL,
+	[CPU_Count] [smallint] NOT NULL,
+	[RAM] [decimal](20, 2) NULL,
+	[RAM_Committed] [decimal](20, 2) NULL,
+	[Date_Captured] [datetime] NOT NULL
+) ON [PRIMARY]
 GO
 
 DROP TABLE IF EXISTS [dbo].[tblDBMon_Transaction_Log_Free_Space]
@@ -47,5 +64,8 @@ CREATE TABLE [dbo].[tblDBMon_Transaction_Log_Free_Space](
 	[Database_Name] [sysname] NOT NULL,
 	[Log_Size_MB] [decimal](20, 2) NULL,
 	[Log_Space_Used_%] [decimal](5, 2) NULL,
-	[Date_Captured] [datetime] NULL)
+	[Date_Captured] [datetime] NULL
+) ON [PRIMARY]
 GO
+
+
