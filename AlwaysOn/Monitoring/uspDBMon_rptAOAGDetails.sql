@@ -123,7 +123,7 @@ IF (@Mail_Flag = 1)
 							FOR XML PATH('tr'), TYPE) AS NVARCHAR(MAX)) +	N'</table>'
 
 		SET @tableHTML = @tableHTML +
-				N'<H3>Disk Space</H3>' +
+				N'<H3>Transaction Log</H3>' +
 				N'<table border="1";padding-left:50px>' +
 				N'<div style="margin-left:500px"></div>' + 
 				N'<tr><th>SQL Server</th><th>Database Name</th>' + 
@@ -140,7 +140,7 @@ IF (@Mail_Flag = 1)
 							FOR XML PATH('tr'), TYPE) AS NVARCHAR(MAX)) +	N'</table>'
 
 		SET @tableHTML = @tableHTML +
-				N'<H3>Disk Space</H3>' +
+				N'<H3>SQL Server Info</H3>' +
 				N'<table border="1";padding-left:50px>' +
 				N'<div style="margin-left:500px"></div>' + 
 				N'<tr><th>SQL Server</th><th>UpTime Days</th>' + 
