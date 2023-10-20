@@ -27,7 +27,7 @@ AS
 						@Disk_Usage_Threshold = 80,
 						@Disk_Free_Space_GB = 50,
 						@CPU_Threshold = 4,
-						@Mail_Recepients = '<email@domain.com'
+						@Mail_Recepients = '<email>@<domain.com>'
 			   			
 	Modification History    
 	-----------------------    
