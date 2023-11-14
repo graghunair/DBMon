@@ -97,3 +97,17 @@ GO
 EXEC [dbo].[uspDBMon_GetIOStats]    
 SELECT * FROM [dbo].[tblDBMon_DM_IO_Virtual_File_Stats]
 GO
+
+
+SELECT	Date_Captured, 
+		Reads, 
+		Reads - LAG(Reads, 1) over(order by  Date_Captured) Reads_delta,
+		Reads_IO_Stalls_ms, 
+		Reads_IO_Stalls_ms - LAG(Reads_IO_Stalls_ms, 1) over(order by  Date_Captured) Delta_Reads_Stalls_ms,
+		Writes,
+		Writes - LAG(Writes, 1) over(order by  Date_Captured) Delta_Writes,
+		Writes_IO_Stalls_ms,
+		Writes_IO_Stalls_ms - LAG(Writes_IO_Stalls_ms, 1) over(order by  Date_Captured) Delta_Writes_Stalls_ms
+FROM	[dba_local].[dbo].[tblDBMon_DM_IO_Virtual_File_Stats]
+WHERE	[Database_Name] = '<Database-Name>'
+AND		[Type] = 'ROWS'
