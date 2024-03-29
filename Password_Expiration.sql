@@ -24,11 +24,6 @@ ALTER TABLE [dbo].[tblSQL_Login_With_Owners] ADD CONSTRAINT CK_tblSQL_Login_With
 GO
 
 --INSERT INTO [dbo].[tblSQL_Login_With_Owners](SQL_Login, Owner_Name, Owner_EMail)
---VALUES ('SiddharthVerma', 'Siddharth Verma', 'siver@microsoft.com')
---GO
-INSERT INTO [dbo].[tblSQL_Login_With_Owners](SQL_Login, Owner_Name, Owner_EMail)
-VALUES ('SiddharthVerma', 'Siddharth Verma', 'siver@dewa.gov.ae')
-GO
 
 --SELECT * FROM [dbo].[tblSQL_Login_With_Owners]
 
