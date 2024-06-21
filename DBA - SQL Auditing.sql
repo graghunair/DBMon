@@ -69,3 +69,11 @@ GO
 
 SELECT * FROM [sys].[fn_get_audit_file] ('<Replace with file path here>*.sqlaudit',default,default);  
 GO  
+
+/*
+ALTER DATABASE AUDIT SPECIFICATION [DatabaseAuditActivities-DBNAME]
+FOR SERVER AUDIT [Audit-SQL-Activities]
+add(SELECT,UPDATE,INSERT,DELETE,EXECUTE,RECEIVE,REFERENCES ON SCHEMA::[dbo] BY [<dbuser>])
+WITH (STATE = ON)
+GO
+*/
