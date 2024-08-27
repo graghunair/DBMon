@@ -9,9 +9,9 @@ GO
 CREATE PROCEDURE [dbo].[uspDBMon_rptGetTLogUtilAndAOAGLatency]
 @Mail BIT = 0,
 @Mail_Subject VARCHAR(2000) = 'TLog Utilization and AOAG latency between Replicas',
-@Mail_Recipients VARCHAR(MAX) = 'email@domain.com',
-@TLog_Util_Threshold TINYINT = 80,
-@AOAG_Queue_Size_KB TINYINT = 1000
+@Mail_Recipients VARCHAR(MAX) = 'mskhan@woqod.com.qa;Raghu.Gopalakrishnan@microsoft.com',
+@TLog_Util_Threshold TINYINT = 0,
+@AOAG_Queue_Size_KB SMALLINT = 1024
 AS
 	/*
 		Author	:	Raghu Gopalakrishnan
@@ -25,7 +25,8 @@ AS
 									@Mail = 0,
 									@Mail_Subject = 'AOAG Latency Between Replicas',
 									@Mail_Recipients = 'email@domain.com',
-									@TLog_Util_Threshold = 0
+									@TLog_Util_Threshold = 0,
+									@AOAG_Queue_Size_KB = 1024
 
 		Modification History
 		----------------------
@@ -36,8 +37,11 @@ SET NOCOUNT ON
 SET CONCAT_NULL_YIELDS_NULL OFF
 
 --Variable declarations
-	DECLARE @tableHTML	VARCHAR(MAX)
-	DECLARE @Mail_Flag	TINYINT = 0
+	DECLARE @tableHTML_TLog	VARCHAR(MAX) = NULL
+	DECLARE @tableHTML_AOAG	VARCHAR(MAX) = NULL
+	DECLARE @tableHTML	VARCHAR(MAX) = NULL
+	DECLARE @Mail_Flag_TLog	TINYINT = 0
+	DECLARE @Mail_Flag_AOAG	TINYINT = 0
 
 --Capture and report Transaction Log Utilization exceeding threshold
 	DECLARE @tblTLog_Space TABLE (
@@ -51,7 +55,7 @@ SET CONCAT_NULL_YIELDS_NULL OFF
 
 	IF EXISTS (SELECT TOP 1 1 FROM @tblTLog_Space WHERE	sys.fn_hadr_is_primary_replica([Database_Name]) = 1 AND	[Log_Space_Used (%)] > @TLog_Util_Threshold)
 	BEGIN
-		SELECT	@Mail_Flag = 1
+		SELECT	@Mail_Flag_TLog = 1
 
 		SELECT	CAST(SERVERPROPERTY('servername') AS SYSNAME) AS [SQL_Server_Name],
 				[Database_Name],	
@@ -78,7 +82,7 @@ SET CONCAT_NULL_YIELDS_NULL OFF
 								AND		sys.fn_hadr_is_primary_replica(adc.[database_name]) = 1
 								AND		(drs.[log_send_queue_size] >= @AOAG_Queue_Size_KB OR drs.[redo_queue_size] >= @AOAG_Queue_Size_KB))
 		BEGIN
-			SELECT	@Mail_Flag = 1
+			SELECT	@Mail_Flag_AOAG = 1
 
 			SELECT		ar.[replica_server_name]										AS [Server_Name], 
 						adc.[database_name]												AS [Database_Name], 
@@ -108,9 +112,9 @@ SET CONCAT_NULL_YIELDS_NULL OFF
 						adc.[database_name]
 		END
 
-	IF (@Mail = 1 AND @Mail_Recipients IS NOT NULL AND @Mail_Flag = 1)
+	IF (@Mail = 1 AND @Mail_Recipients IS NOT NULL AND @Mail_Flag_TLog = 1)
 		BEGIN			
-			SET @tableHTML = 
+			SET @tableHTML_TLog = 
 								N'<H3>Transaction Log Utilization</H3>' +
 								N'<table border="1";padding-left:50px>' +
 								N'<div style="margin-left: 50px"></div>' + 
@@ -130,14 +134,17 @@ SET CONCAT_NULL_YIELDS_NULL OFF
 											AND			[Log_Space_Used (%)] > @TLog_Util_Threshold
 											ORDER BY	[Database_Name]
 											FOR XML PATH('tr'), TYPE) AS NVARCHAR(MAX)) +	N'</table>'		
-											
-			SET @tableHTML =	@tableHTML +
+		END
+			
+	IF (@Mail = 1 AND @Mail_Recipients IS NOT NULL AND @Mail_Flag_AOAG = 1)
+		BEGIN
+			SET @tableHTML_AOAG =	
 								N'<H3>AlwaysOn Availability Group Latency</H3>' +
 								N'<table border="1";padding-left:50px>' +
 								N'<div style="margin-left:50px"></div>' + 
 								N'<tr><th>Replica Name</th>' + 
 								N'<th>Database Name</th>' + 
-								N'<tr><th>AG Name</th>' + 
+								N'<th>AG Name</th>' + 
 								N'<th>Synchronization State</th>' + 
 								N'<th>Synchronization Health</th>' +
 								N'<th>Last Sent Time</th>' +
@@ -173,11 +180,15 @@ SET CONCAT_NULL_YIELDS_NULL OFF
 														ar.[replica_server_name], 
 														adc.[database_name]
 											FOR XML PATH('tr'), TYPE) AS NVARCHAR(MAX)) +	N'</table>'
+		END
 
+	IF (@Mail = 1 AND @Mail_Recipients IS NOT NULL AND (@Mail_Flag_TLog = 1 OR @Mail_Flag_AOAG = 1))
+		BEGIN
+			SELECT @tableHTML = @tableHTML_TLog + @tableHTML_AOAG
 			EXEC	msdb.dbo.sp_send_dbmail @recipients = @Mail_Recipients,
 			@subject = @Mail_Subject,
 			--@profile_name = N'<profile-name>',
-			@body = @tableHTML,
+			@body = @tableHTML_TLog + @tableHTML_AOAG,
 			@body_format = 'HTML'
 		END
 	ELSE
@@ -186,5 +197,5 @@ SET CONCAT_NULL_YIELDS_NULL OFF
 		END
 GO
 
-EXEC [dbo].[uspDBMon_rptGetTLogUtilAndAOAGLatency] @TLog_Util_Threshold = 60, @AOAG_Queue_Size_KB = 100
+EXEC [dbo].[uspDBMon_rptGetTLogUtilAndAOAGLatency] @TLog_Util_Threshold = 60, @AOAG_Queue_Size_KB = 1024
 GO
