@@ -9,7 +9,7 @@ GO
 CREATE PROCEDURE [dbo].[uspDBMon_rptGetTLogUtilAndAOAGLatency]
 @Mail BIT = 0,
 @Mail_Subject VARCHAR(2000) = 'TLog Utilization and AOAG latency between Replicas',
-@Mail_Recipients VARCHAR(MAX) = 'mskhan@woqod.com.qa;Raghu.Gopalakrishnan@microsoft.com',
+@Mail_Recipients VARCHAR(MAX) = 'email@domain.com',
 @TLog_Util_Threshold TINYINT = 0,
 @AOAG_Queue_Size_KB SMALLINT = 1024
 AS
@@ -80,7 +80,7 @@ SET CONCAT_NULL_YIELDS_NULL OFF
 								WHERE	1=1
 								AND		drs.[is_local]	= 0
 								AND		sys.fn_hadr_is_primary_replica(adc.[database_name]) = 1
-								AND		(drs.[log_send_queue_size] >= @AOAG_Queue_Size_KB OR drs.[redo_queue_size] >= @AOAG_Queue_Size_KB))
+								AND		(drs.[log_send_queue_size] >= @AOAG_Queue_Size_KB OR drs.[redo_queue_size] >= @AOAG_Queue_Size_KB OR drs.[synchronization_health] <> 2))
 		BEGIN
 			SELECT	@Mail_Flag_AOAG = 1
 
@@ -106,7 +106,7 @@ SET CONCAT_NULL_YIELDS_NULL OFF
 			WHERE	1=1
 			AND		drs.[is_local]	= 0
 			AND		sys.fn_hadr_is_primary_replica(adc.[database_name]) = 1
-			AND		(drs.[log_send_queue_size] >= @AOAG_Queue_Size_KB OR drs.[redo_queue_size] >= @AOAG_Queue_Size_KB)
+			AND		(drs.[log_send_queue_size] >= @AOAG_Queue_Size_KB OR drs.[redo_queue_size] >= @AOAG_Queue_Size_KB OR drs.[synchronization_health] <> 2)
 			ORDER BY 
 						ar.[replica_server_name], 
 						adc.[database_name]
@@ -175,7 +175,7 @@ SET CONCAT_NULL_YIELDS_NULL OFF
 											WHERE	1=1
 											AND		drs.[is_local]	= 0
 											AND		sys.fn_hadr_is_primary_replica(adc.[database_name]) = 1
-											--AND		(drs.[log_send_queue_size] >= @AOAG_Queue_Size_KB OR drs.[redo_queue_size] >= @AOAG_Queue_Size_KB)
+											--AND		(drs.[log_send_queue_size] >= @AOAG_Queue_Size_KB OR drs.[redo_queue_size] >= @AOAG_Queue_Size_KB OR drs.[synchronization_health] <> 2)
 											ORDER BY 
 														ar.[replica_server_name], 
 														adc.[database_name]
@@ -197,5 +197,5 @@ SET CONCAT_NULL_YIELDS_NULL OFF
 		END
 GO
 
-EXEC [dbo].[uspDBMon_rptGetTLogUtilAndAOAGLatency] @TLog_Util_Threshold = 60, @AOAG_Queue_Size_KB = 1024
+EXEC [dbo].[uspDBMon_rptGetTLogUtilAndAOAGLatency] @Mail = 1, @TLog_Util_Threshold = 60, @AOAG_Queue_Size_KB = 1024
 GO
