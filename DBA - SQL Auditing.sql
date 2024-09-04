@@ -76,4 +76,11 @@ FOR SERVER AUDIT [Audit-SQL-Activities]
 add(SELECT,UPDATE,INSERT,DELETE,EXECUTE,RECEIVE,REFERENCES ON SCHEMA::[dbo] BY [<dbuser>])
 WITH (STATE = ON)
 GO
+
+ALTER SERVER AUDIT [DBA_SecurityAudit] WITH (STATE = OFF);
+GO
+ALTER SERVER AUDIT [DBA_SecurityAudit] WHERE server_principal_name <> N'service account name';
+GO
+ALTER SERVER AUDIT [DBA_SecurityAudit] WITH (STATE = ON);
+GO
 */
