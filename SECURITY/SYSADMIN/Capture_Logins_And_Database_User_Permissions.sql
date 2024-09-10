@@ -1,3 +1,15 @@
+/*
+		Date	:	10th Sept 2024
+		Purpose	:	This script is used to capture Logins and Database User Permissions.
+		Version	:	1.0
+		License:
+					This script is provided "AS IS" with no warranties, and confers no rights.
+
+		Modification History
+		----------------------
+		Sept	10th, 2024	:	v1.0	:	Raghu Gopalakrishnan	:	Inception
+*/
+
 SET NOCOUNT ON
 GO
 
