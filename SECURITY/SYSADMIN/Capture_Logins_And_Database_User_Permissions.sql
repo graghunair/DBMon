@@ -13,7 +13,7 @@
 SET NOCOUNT ON
 GO
 
-DECLARE		@MailRecipients VARCHAR(2000) = 'Raghu.Gopalakrishnan@microsoft.com'
+DECLARE		@MailRecipients VARCHAR(2000) = '<email>@<domain>.com'
 DECLARE		@MailSubject VARCHAR(2000) = CAST(SERVERPROPERTY('servername') AS SYSNAME) + '- SQL Server Logins and Roles'
 DECLARE		@HTMLTable VARCHAR(MAX) = NULL
 DECLARE		@varDatabase_Name SYSNAME
