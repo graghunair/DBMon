@@ -18,10 +18,11 @@ SET CONCAT_NULL_YIELDS_NULL OFF
 		License:
 					This script is provided "AS IS" with no warranties, and confers no rights.
 
+					DECLARE @varSQL_Server_Instance SYSNAME = CAST(SERVERPROPERTY('servername') AS SYSNAME)
 					EXEC [dbo].[uspDBMon_rptGetSQLServerLoginsAndUsersWithRoles] 
 									@Mail = 1,
 									@Mail_Recipients = 'email@domain.com',
-									@SQL_Server_Instance = CAST(@@SERVERNAME AS SYSNAME)
+									@SQL_Server_Instance = @varSQL_Server_Instance
 
 		Modification History
 		----------------------
