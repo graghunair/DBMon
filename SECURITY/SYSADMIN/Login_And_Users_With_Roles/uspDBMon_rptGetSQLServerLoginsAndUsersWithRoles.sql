@@ -105,9 +105,3 @@ IF (@Mail = 1)
 	END
 GO
 
-
-DECLARE @varSQL_Server_Instance SYSNAME = CAST(SERVERPROPERTY('servername') AS SYSNAME)
-EXEC [dbo].[uspDBMon_rptGetSQLServerLoginsAndUsersWithRoles] 
-				@Mail = 1,
-				@Mail_Recipients = 'Raghu.Gopalakrishnan@microsoft.com',
-				@SQL_Server_Instance = @varSQL_Server_Instance
