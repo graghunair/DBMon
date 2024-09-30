@@ -10,7 +10,7 @@ CREATE PROC [dbo].[uspDBMon_GetTLogUtilization]
 @Database_Name SYSNAME = NULL
 AS
 /*		
-	Date	:	25th Sept 2024
+	Date	:	4th Oct 2024
 	Purpose	:	This Stored Procedure is used to return TLog Utilization
 	Version	:	1.0
 	License:
@@ -21,7 +21,7 @@ AS
 
 	Modification History
 	----------------------
-	Sept	25th, 2024	:	v1.0	:	Inception
+	Oct	4th, 2024	:	v1.0	:	Inception
 */
 SET NOCOUNT ON
 
