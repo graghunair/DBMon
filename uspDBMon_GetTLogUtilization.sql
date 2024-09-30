@@ -36,29 +36,49 @@ DECLARE @tblDBInfo TABLE(
 		[Log Size (MB)] DECIMAL(32,2),
 		[Log Space Used (%)] DECIMAL(5,2),
 		[Recovery_Mode] NVARCHAR(60),
-		[Log_Reuse_Wait_Desc] NVARCHAR(60))
+		[Log_Reuse_Wait_Desc] NVARCHAR(60),
+		[Log_Backup_Timestamp] DATETIME)
 
 INSERT INTO @tblTLogInfo ([Database_Name], [Log Size (MB)], [Log Space Used (%)], [Status])
-EXEC ('DBCC sqlperf(logspace) WITH NO_INFOMSGS')
+EXEC ('DBCC sqlperf(logspace) WITH NO_INFOMSGS');
 
-INSERT INTO	@tblDBInfo
-SELECT		[Database_Name],
-			[Log Size (MB)],
-			[Log Space Used (%)],
-			[recovery_model_desc],
-			[log_reuse_wait_desc] 
-FROM		@tblTLogInfo tli
-INNER JOIN	sys.databases sd
-		ON	tli.[Database_Name] = sd.[name] 
+WITH cteBackupTimestamp as
+(
+SELECT		[database_name] AS [Database_Name], 
+            (
+				SELECT	MAX(backup_finish_date) 
+				FROM	msdb..backupset b 
+				WHERE	[type] = 'L' 
+				and		b.[database_name] = c.[database_name]
+			)	AS [Log_Backup_TimeStamp]
+FROM        msdb..backupset c 
+INNER JOIN	sys.databases a
+on			c.[database_name] = a.[name]
+group by    [database_name]
+)
+
+INSERT INTO		@tblDBInfo
+SELECT			sd.[name],
+				[Log Size (MB)],
+				[Log Space Used (%)],
+				[recovery_model_desc],
+				[log_reuse_wait_desc],
+				[Log_Backup_TimeStamp]
+FROM			@tblTLogInfo tli
+INNER JOIN		sys.databases sd
+		ON		tli.[Database_Name] = sd.[name] 
+LEFT OUTER JOIN cteBackupTimestamp bt
+ON				sd.[name] = bt.[Database_Name]
 
 IF (@Database_Name IS NULL)
 	BEGIN
-		SELECT		SERVERPROPERTY('servername') AS [SQL_Server_Instance_Name],
+		SELECT		SERVERPROPERTY('ServerName') AS [SQL_Server_Instance_Name],
 					[Database_Name],
 					[Log Size (MB)],
 					[Log Space Used (%)],
 					[Recovery_Mode],
 					[Log_Reuse_Wait_Desc],
+					[Log_Backup_TimeStamp],
 					GETDATE() AS [Date_Captured]
 		FROM		@tblDBInfo
 		ORDER BY	[Database_Name]
@@ -67,12 +87,13 @@ ELSE
 	BEGIN
 		IF EXISTS (SELECT TOP 1 1 FROM sys.databases WHERE [name] = @Database_Name)
 			BEGIN
-				SELECT		SERVERPROPERTY('servername') AS [SQL_Server_Instance_Name],
+				SELECT		SERVERPROPERTY('ServerName') AS [SQL_Server_Instance_Name],
 							[Database_Name],
 							[Log Size (MB)],
 							[Log Space Used (%)],
 							[Recovery_Mode],
 							[Log_Reuse_Wait_Desc],
+							[Log_Backup_TimeStamp],
 							GETDATE() AS [Date_Captured]
 				FROM		@tblDBInfo
 				WHERE		[Database_Name] = @Database_Name
