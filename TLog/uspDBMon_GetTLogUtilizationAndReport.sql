@@ -1,12 +1,17 @@
 SET NOCOUNT ON
 GO
 
-USE [dba_local]
+--USE [dba_local]
 GO
 
 DROP TABLE IF EXISTS [dbo].[tblDBMon_ERRORLOG]
 GO
-CREATE TABLE [dbo].[tblDBMon_ERRORLOG]([Date_Captured] DATETIME DEFAULT GETDATE(), [Source] SYSNAME, [Message] VARCHAR(MAX), [Alert_Flag] BIT DEFAULT 0)
+CREATE TABLE [dbo].[tblDBMon_ERRORLOG](
+			[Date_Captured] DATETIME DEFAULT GETDATE(), 
+			[Source] SYSNAME, 
+			[Database_Name] SYSNAME,
+			[Message] VARCHAR(MAX), 
+			[Alert_Flag] BIT DEFAULT 0)
 GO
 CREATE CLUSTERED INDEX IDX_tblDBMon_ERRORLOG ON [dbo].[tblDBMon_ERRORLOG]([Date_Captured])
 GO
@@ -19,6 +24,7 @@ CREATE PROC [dbo].[uspDBMon_GetTLogUtilizationAndReport]
 @Mail_Flag BIT = 1
 AS
 SET NOCOUNT ON
+SET CONCAT_NULL_YIELDS_NULL OFF
 
 --Variable declarations
 DECLARE @tableHTML											VARCHAR(MAX)
@@ -30,11 +36,8 @@ DECLARE @varDBName											NVARCHAR(128)
 DECLARE @varUserDBCnt										SMALLINT
 DECLARE @varTLogBackupTimestamp								XML
 
-
-
 --Table variable to store the output of DBCC SQLPERF(LOGSPACE)
 DECLARE	@tblTLogUsage TABLE	(
-	[ID]				SMALLINT,
 	[DB_Name]			NVARCHAR(128), 
 	[Log_Size_MB]		DECIMAL(12,2), 
 	[Log_Space_Used%]	DECIMAL(10,2), 
@@ -55,28 +58,28 @@ DECLARE @tblTranInfo TABLE (
 	[SQLText]		VARCHAR(2000) )
 
 SELECT	@varUserDBCnt = COUNT(1) 
-FROM	sys.databases 
-WHERE	is_distributor = 0 
-AND		database_id > 4
+FROM	[sys].[databases] 
+WHERE	[is_distributor] = 0 
+AND		[database_id] > 4
 
 --Capture the value of Transaction Log usage
-insert into @tblTLogUsage([DB_Name], [Log_Size_MB], [Log_Space_Used%], [Status])
-exec('dbcc sqlperf(logspace) with no_infomsgs')
+INSERT INTO @tblTLogUsage([DB_Name], [Log_Size_MB], [Log_Space_Used%], [Status])
+EXEC('dbcc sqlperf(logspace) with no_infomsgs')
 	
 IF EXISTS (SELECT 1 FROM @tblTLogUsage WHERE [Log_Space_Used%] >= @TLog_Usage_Threshold)
 	BEGIN
 		--Database(s) exceed the threshold. Need to Alert!.					
 			SELECT		@varCounter = MIN(b.database_id)
 			FROM		@tblTLogUsage a
-			INNER JOIN	sys.databases b
+			INNER JOIN	[sys].[databases] b
 					ON	a.[DB_Name] = b.[name] COLLATE database_default
 			WHERE		[Log_Space_Used%] >= @TLog_Usage_Threshold  
 			AND			b.[log_reuse_wait_desc] = 'ACTIVE_TRANSACTION'
 					
 			WHILE (@varCounter IS NOT NULL)
 				BEGIN
-					SELECT	@varDBName = name 
-					FROM	sys.databases
+					SELECT	@varDBName = [name]
+					FROM	[sys].[databases]
 					WHERE	database_id = @varCounter 
 							
 					DELETE FROM @tblOpenTranInfo
@@ -90,28 +93,28 @@ IF EXISTS (SELECT 1 FROM @tblTLogUsage WHERE [Log_Space_Used%] >= @TLog_Usage_Th
 							
 					INSERT INTO @tblTranInfo ([SPID], [DB_Name], [Host_Name],[Login_Name], [Last_Batch], [CMD], [SQLText])
 					SELECT		a.spid, DB_NAME(a.[dbid]), a.hostname, a.loginame, a.last_batch , a.cmd, SUBSTRING(b.[text],0,2000)
-					FROM		sys.sysprocesses a
-					CROSS APPLY	sys.dm_exec_sql_text([sql_handle]) b
+					FROM		[sys].[sysprocesses] a
+					CROSS APPLY	[sys].[dm_exec_sql_text]([sql_handle]) b
 					WHERE		spid = @varSPID
 							
 					SELECT		@varCounter = MIN(b.database_id)
 					FROM		@tblTLogUsage a
-					INNER JOIN	sys.databases b
+					INNER JOIN	[sys].[databases] b
 							ON	a.[DB_Name] = b.[name] COLLATE database_default
 					WHERE		[Log_Space_Used%] >= @TLog_Usage_Threshold  
 					AND			b.[log_reuse_wait_desc] = 'ACTIVE_TRANSACTION'
 					AND			b.database_id > @varCounter 
 				END
 
-			INSERT INTO [dbo].[tblDBMon_ERRORLOG]([Source], [Message], [Alert_Flag]) 
-			SELECT		CAST(OBJECT_NAME(@@PROCID) AS SYSNAME), 'DB:' + [DB_Name]
-						+ '; Log_Size_MB:' + CAST([Log_Size_MB] as varchar(20))  
-						+ '; Log_Space_Used%:' + CAST([Log_Space_Used%] as varchar(7)) 
+			INSERT INTO [dbo].[tblDBMon_ERRORLOG]([Source], [Database_Name], [Message], [Alert_Flag]) 
+			SELECT		CAST(OBJECT_NAME(@@PROCID) AS SYSNAME), [DB_Name], 'DB:' + [DB_Name]
+						+ '; Log_Size_MB:' + CAST([Log_Size_MB] AS VARCHAR(20))  
+						+ '; Log_Space_Used%:' + CAST([Log_Space_Used%] AS VARCHAR(7)) 
 						+ '; Log Reuse Wait Desc:' + [log_reuse_wait_desc] 
 						+ '; Recovery Model:' + [recovery_model_desc] COLLATE database_default,
 						1
 			FROM		@tblTLogUsage a
-			INNER JOIN	sys.databases b
+			INNER JOIN	[sys].[databases] b
 					ON	a.[DB_Name] = b.[name] COLLATE database_default
 			WHERE		[Log_Space_Used%] >= @TLog_Usage_Threshold  
 			ORDER BY	[Log_Space_Used%] DESC
@@ -133,11 +136,21 @@ IF EXISTS (SELECT 1 FROM @tblTLogUsage WHERE [Log_Space_Used%] >= @TLog_Usage_Th
 							, td = [log_reuse_wait_desc], ''
 							, td = [recovery_model_desc] 
 							FROM @tblTLogUsage a
-							INNER JOIN sys.databases b
+							INNER JOIN [sys].[databases] b
 							ON a.[DB_Name] = b.[name] COLLATE database_default
 							WHERE [Log_Space_Used%] >= @TLog_Usage_Threshold
 							ORDER BY [Log_Size_MB] DESC
 				FOR XML PATH('tr'), TYPE ) AS NVARCHAR(MAX) ) +	N'</table>' 
+
+				SELECT		a.[DB_Name],
+							a.[Log_Size_MB],
+							a.[Log_Space_Used%],
+							b.log_reuse_wait_desc AS [Log Reuse Wait Desc]
+				FROM		@tblTLogUsage a
+				INNER JOIN [sys].[databases] b
+						ON a.[DB_Name] = b.[name] COLLATE database_default
+				WHERE		[Log_Space_Used%] >= @TLog_Usage_Threshold
+				ORDER BY	[Log_Size_MB] DESC
 						
 				IF EXISTS (SELECT TOP 1 1 FROM @tblTranInfo)
 					BEGIN
@@ -161,7 +174,11 @@ IF EXISTS (SELECT 1 FROM @tblTLogUsage WHERE [Log_Space_Used%] >= @TLog_Usage_Th
 										FROM @tblTranInfo
 										ORDER BY [DB_Name]
 							FOR XML PATH('tr'), TYPE ) AS NVARCHAR(MAX) ) +	N'</table>' 
-						END
+						
+						SELECT	*
+						FROM	@tblTranInfo
+						ORDER BY [DB_Name]
+					END
 
 				IF (@Mail_Flag <> 0)
 					BEGIN
@@ -177,8 +194,8 @@ ELSE
 	BEGIN
 		--All Databases within the threshold. No Alert to be sent.
 			--PRINT 'Transaction log usage of all database within threshold specified.'
-			INSERT INTO [dbo].[tblDBMon_ERRORLOG]([Source], [Message])
-			VALUES (CAST(OBJECT_NAME(@@PROCID) AS SYSNAME), 'Transaction log usage of all databases are within threshold specified.') 
+			INSERT INTO [dbo].[tblDBMon_ERRORLOG]([Source], [Database_Name], [Message])
+			VALUES (CAST(OBJECT_NAME(@@PROCID) AS SYSNAME), NULL, 'Transaction log usage of all databases are within threshold specified.') 
 	END
 GO
 
@@ -186,5 +203,4 @@ EXEC [dbo].[uspDBMon_GetTLogUtilizationAndReport] @TLog_Usage_Threshold = 25
 GO
 SELECT * FROM [dbo].[tblDBMon_ERRORLOG]
 GO
-DBCC SQLPERF(logspace)
-GO
+
