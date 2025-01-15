@@ -197,6 +197,10 @@ ELSE
 			INSERT INTO [dbo].[tblDBMon_ERRORLOG]([Source], [Database_Name], [Message])
 			VALUES (CAST(OBJECT_NAME(@@PROCID) AS SYSNAME), NULL, 'Transaction log usage of all databases are within threshold specified.') 
 	END
+
+DELETE	TOP (10000)
+FROM	[dbo].[tblDBMon_ERRORLOG]
+WHERE	[Date_Captured] < GETDATE() - 35
 GO
 
 EXEC [dbo].[uspDBMon_GetTLogUtilizationAndReport] @TLog_Usage_Threshold = 25
