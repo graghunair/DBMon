@@ -1,0 +1,96 @@
+USE [master]
+GO
+
+DROP TABLE IF EXISTS [dbo].[tblDBMon_DM_Exec_Query_Memory_Grants]
+GO
+CREATE TABLE [dbo].[tblDBMon_DM_Exec_Query_Memory_Grants](
+						[Session_ID] [smallint] NULL,
+						[DOP] [smallint] NULL,
+						[Request_Time] [datetime] NULL,
+						[Grant_Time] [datetime] NULL,
+						[Requested_Memory_MB] [numeric](26, 6) NULL,
+						[Granted_Memory_MB] [numeric](26, 6) NULL,
+						[Used_Memory_MB] [numeric](26, 6) NULL,
+						[Max_Used_Memory_MB] [numeric](26, 6) NULL,
+						[Required_Memory_MB] [numeric](26, 6) NULL,
+						[Query_Cost] [float] NULL,
+						[Timeout_Sec] [int] NULL,
+						[Login_Name] [nvarchar](128) NOT NULL,
+						[Host_Name] [nvarchar](128) NULL,
+						[Program_Name] [nvarchar](128) NULL,
+						[Query_Text] [nvarchar](max) NULL,
+						[Query_Plan] [xml] NULL,
+						[Date_Captured] [datetime])
+GO
+
+CREATE CLUSTERED INDEX IDX_tblDBMon_DM_Exec_Query_Memory_Grants ON [dbo].[tblDBMon_DM_Exec_Query_Memory_Grants]([Date_Captured] DESC)
+GO
+
+DROP PROC IF EXISTS [dbo].[uspDBMon_GetQueryMemoryGrants]
+GO
+CREATE PROC [dbo].[uspDBMon_GetQueryMemoryGrants]
+@Requested_Memory_MB INT = 0
+AS
+SET NOCOUNT ON
+
+INSERT INTO [dbo].[tblDBMon_DM_Exec_Query_Memory_Grants](
+			[Session_ID],
+			[DOP],
+			[Request_Time],
+			[Grant_Time],
+			[Requested_Memory_MB],
+			[Granted_Memory_MB],
+			[Used_Memory_MB],
+			[Max_Used_Memory_MB],
+			[Required_Memory_MB],
+			[Query_Cost],
+			[Timeout_Sec],
+			[Login_Name],
+			[Host_Name],
+			[Program_Name],
+			[Query_Text],
+			[Query_Plan],
+			[Date_Captured])
+SELECT
+			mg.[session_id],
+			mg.dop,
+			mg.request_time,
+			mg.grant_time,
+			mg.requested_memory_kb / 1024.0 AS requested_memory_mb,
+			mg.granted_memory_kb   / 1024.0 AS granted_memory_mb,
+			mg.used_memory_kb      / 1024.0 AS used_memory_mb,
+			mg.max_used_memory_kb  / 1024.0 AS max_used_memory_mb,
+			mg.required_memory_kb  / 1024.0 AS required_memory_mb,
+			mg.query_cost,
+			mg.timeout_sec,
+			s.login_name,
+			s.[host_name],
+			s.[program_name],
+			SUBSTRING(t.[text],
+					  (r.statement_start_offset/2) + 1,
+					  ((CASE r.statement_end_offset
+							WHEN -1 THEN DATALENGTH(t.[text])
+							ELSE r.statement_end_offset
+						END - r.statement_start_offset)/2) + 1
+					 ) AS query_text,
+			qp.query_plan,
+			GETDATE()
+FROM		sys.dm_exec_query_memory_grants AS mg
+INNER JOIN	sys.dm_exec_sessions AS s
+		ON	mg.session_id = s.session_id
+LEFT JOIN	sys.dm_exec_requests AS r
+		ON	mg.session_id = r.session_id
+CROSS APPLY sys.dm_exec_sql_text(r.[sql_handle]) AS t
+CROSS APPLY sys.dm_exec_query_plan(r.plan_handle) AS qp
+WHERE		mg.requested_memory_kb >= @Requested_Memory_MB/1024.
+
+DELETE TOP (10000)
+FROM [dbo].[tblDBMon_DM_Exec_Query_Memory_Grants]
+WHERE Date_Captured < GETDATE() - 100
+GO
+
+EXEC [dbo].[uspDBMon_GetQueryMemoryGrants]
+GO
+SELECT * FROM [dbo].[tblDBMon_DM_Exec_Query_Memory_Grants]
+ORDER BY Date_Captured DESC, [Requested_Memory_MB] DESC
+GO
