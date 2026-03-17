@@ -29,7 +29,7 @@ GO
 DROP PROC IF EXISTS [dbo].[uspDBMon_GetQueryMemoryGrants]
 GO
 CREATE PROC [dbo].[uspDBMon_GetQueryMemoryGrants]
-@Requested_Memory_MB INT = 0
+@Requested_Memory_MB INT = 250
 AS
 SET NOCOUNT ON
 
@@ -82,7 +82,7 @@ LEFT JOIN	sys.dm_exec_requests AS r
 		ON	mg.session_id = r.session_id
 CROSS APPLY sys.dm_exec_sql_text(r.[sql_handle]) AS t
 CROSS APPLY sys.dm_exec_query_plan(r.plan_handle) AS qp
-WHERE		mg.requested_memory_kb >= @Requested_Memory_MB/1024.
+WHERE		mg.requested_memory_kb >= @Requested_Memory_MB*1024.
 
 DELETE TOP (10000)
 FROM [dbo].[tblDBMon_DM_Exec_Query_Memory_Grants]
