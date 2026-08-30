@@ -23,6 +23,15 @@ CREATE PROC [dbo].[uspDBMon_GetTLogUtilizationAndReport]
 @Mail_Recepients VARCHAR(MAX) = 'raghu.gopalakrishnan@microsoft.com',
 @Mail_Flag BIT = 1
 AS
+/*
+		Date		:		August 30th, 2026
+		Purpose		:		Get Transaction Log Utilization and Email as a Report
+		Version		:		1.0
+
+		Modification History
+		--------------------
+		30th August 2026	:	v1.0	:	Inception
+*/
 SET NOCOUNT ON
 SET CONCAT_NULL_YIELDS_NULL OFF
 
